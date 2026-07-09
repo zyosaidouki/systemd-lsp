@@ -149,11 +149,12 @@ func (s *Server) dispatch(method string, params json.RawMessage) (any, [][]byte,
 }
 
 const defaultServiceTemplate = `[Unit]
-Description=New systemd service
+Description=
 
 [Service]
 Type=simple
-ExecStart=/usr/bin/true
+ExecStart=
+ExecStop=
 
 [Install]
 WantedBy=multi-user.target
