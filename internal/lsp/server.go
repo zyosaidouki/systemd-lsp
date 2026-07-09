@@ -243,11 +243,12 @@ func (s *Server) completion(p TextDocumentPositionParams) any {
 		items := make([]CompletionItem, 0, len(s.catalog.SectionsFor(unitType)))
 		for _, section := range s.catalog.SectionsFor(unitType) {
 			items = append(items, CompletionItem{
-				Label:         "[" + section + "]",
-				Kind:          CompletionItemKindSnippet,
-				Detail:        "systemd section",
-				Documentation: s.catalog.SectionDoc(section),
-				InsertText:    "[" + section + "]",
+				Label:            "[" + section + "]",
+				Kind:             CompletionItemKindSnippet,
+				Detail:           "systemd section",
+				Documentation:    s.catalog.SectionDoc(section),
+				InsertText:       "[" + section + "]\n$0",
+				InsertTextFormat: InsertTextFormatSnippet,
 			})
 		}
 		return items
@@ -266,11 +267,12 @@ func (s *Server) completion(p TextDocumentPositionParams) any {
 	items := make([]CompletionItem, 0, len(directives))
 	for _, directive := range directives {
 		items = append(items, CompletionItem{
-			Label:         directive.Name,
-			Kind:          CompletionItemKindField,
-			Detail:        "[" + section + "] directive",
-			Documentation: directive.Doc,
-			InsertText:    directive.Name + "=",
+			Label:            directive.Name,
+			Kind:             CompletionItemKindField,
+			Detail:           "[" + section + "] directive",
+			Documentation:    directive.Doc,
+			InsertText:       directive.Name + "=$0",
+			InsertTextFormat: InsertTextFormatSnippet,
 		})
 	}
 	return items

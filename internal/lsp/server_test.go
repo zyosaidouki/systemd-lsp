@@ -82,6 +82,47 @@ func TestCompletionReturnsServiceDirectives(t *testing.T) {
 	if !hasCompletion(items, "Delegate") {
 		t.Fatalf("completion labels = %#v, missing Delegate", items)
 	}
+	item, ok := completionByLabel(items, "ExecStart")
+	if !ok {
+		t.Fatal("missing ExecStart completion")
+	}
+	if item.InsertText != "ExecStart=$0" {
+		t.Fatalf("ExecStart insertText = %q, want snippet cursor after =", item.InsertText)
+	}
+	if item.InsertTextFormat != InsertTextFormatSnippet {
+		t.Fatalf("ExecStart insertTextFormat = %d, want snippet", item.InsertTextFormat)
+	}
+}
+
+func TestCompletionReturnsSectionSnippets(t *testing.T) {
+	server := NewServer(systemd.NewCatalog(), nil)
+	open := []byte(`{"jsonrpc":"2.0","method":"textDocument/didOpen","params":{"textDocument":{"uri":"file:///tmp/demo.service","languageId":"systemd","version":1,"text":"["}}}`)
+	if len(server.Handle(open)) != 1 {
+		t.Fatal("didOpen did not publish diagnostics")
+	}
+	payload := []byte(`{"jsonrpc":"2.0","id":2,"method":"textDocument/completion","params":{"textDocument":{"uri":"file:///tmp/demo.service"},"position":{"line":0,"character":1}}}`)
+	responses := server.Handle(payload)
+	if len(responses) != 1 {
+		t.Fatal("Handle returned no response")
+	}
+	var msg rpcMessage
+	if err := json.Unmarshal(responses[0], &msg); err != nil {
+		t.Fatal(err)
+	}
+	var items []CompletionItem
+	if err := json.Unmarshal(msg.Result, &items); err != nil {
+		t.Fatal(err)
+	}
+	item, ok := completionByLabel(items, "[Service]")
+	if !ok {
+		t.Fatalf("completion labels = %#v, missing [Service]", items)
+	}
+	if item.InsertText != "[Service]\n$0" {
+		t.Fatalf("[Service] insertText = %q, want newline snippet", item.InsertText)
+	}
+	if item.InsertTextFormat != InsertTextFormatSnippet {
+		t.Fatalf("[Service] insertTextFormat = %d, want snippet", item.InsertTextFormat)
+	}
 }
 
 func TestDidOpenEmptyServiceRequestsTemplateInsertion(t *testing.T) {
@@ -135,10 +176,15 @@ func TestDidOpenEmptyTimerDoesNotRequestTemplateInsertion(t *testing.T) {
 }
 
 func hasCompletion(items []CompletionItem, label string) bool {
+	_, ok := completionByLabel(items, label)
+	return ok
+}
+
+func completionByLabel(items []CompletionItem, label string) (CompletionItem, bool) {
 	for _, item := range items {
 		if item.Label == label {
-			return true
+			return item, true
 		}
 	}
-	return false
+	return CompletionItem{}, false
 }
