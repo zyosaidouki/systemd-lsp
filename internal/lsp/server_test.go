@@ -117,8 +117,8 @@ func TestCompletionReturnsSectionSnippets(t *testing.T) {
 	if !ok {
 		t.Fatalf("completion labels = %#v, missing [Service]", items)
 	}
-	if item.InsertText != "[Service]\n$0" {
-		t.Fatalf("[Service] insertText = %q, want newline snippet", item.InsertText)
+	if item.InsertText != "[Service]$0" {
+		t.Fatalf("[Service] insertText = %q, want cursor after section", item.InsertText)
 	}
 	if item.InsertTextFormat != InsertTextFormatSnippet {
 		t.Fatalf("[Service] insertTextFormat = %d, want snippet", item.InsertTextFormat)

@@ -247,7 +247,7 @@ func (s *Server) completion(p TextDocumentPositionParams) any {
 				Kind:             CompletionItemKindSnippet,
 				Detail:           "systemd section",
 				Documentation:    s.catalog.SectionDoc(section),
-				InsertText:       "[" + section + "]\n$0",
+				InsertText:       "[" + section + "]$0",
 				InsertTextFormat: InsertTextFormatSnippet,
 			})
 		}
