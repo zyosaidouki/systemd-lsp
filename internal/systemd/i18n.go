@@ -25,6 +25,17 @@ func (c *Catalog) SectionDocFor(section, locale string) string {
 	return "systemd の [" + section + "] セクションです。"
 }
 
+func (c *Catalog) SectionDocumentationFor(section, locale string) string {
+	locale = NormalizeLocale(locale)
+	doc := c.SectionDocFor(section, locale)
+	syntax := "[" + section + "]"
+	example := sectionExample(section)
+	if locale == LocaleJapanese {
+		return markdownDoc("説明", doc, "文法", syntax, "例", example)
+	}
+	return markdownDoc("Description", doc, "Syntax", syntax, "Example", example)
+}
+
 func DirectiveDocFor(section string, directive Directive, locale string) string {
 	if NormalizeLocale(locale) != LocaleJapanese {
 		return directive.Doc
@@ -33,6 +44,48 @@ func DirectiveDocFor(section string, directive Directive, locale string) string 
 		return doc
 	}
 	return "systemd の [" + section + "] セクションで使用する " + directive.Name + " ディレクティブです。"
+}
+
+func DirectiveDocumentationFor(section string, directive Directive, locale string) string {
+	locale = NormalizeLocale(locale)
+	doc := DirectiveDocFor(section, directive, locale)
+	syntax := directiveSyntax(directive)
+	example := directiveExample(directive)
+	if locale == LocaleJapanese {
+		return markdownDoc("説明", doc, "文法", syntax, "例", example)
+	}
+	return markdownDoc("Description", doc, "Syntax", syntax, "Example", example)
+}
+
+func markdownDoc(descriptionTitle, description, syntaxTitle, syntax, exampleTitle, example string) string {
+	return "**" + descriptionTitle + "**\n\n" + description +
+		"\n\n**" + syntaxTitle + "**\n\n```ini\n" + syntax +
+		"\n```\n\n**" + exampleTitle + "**\n\n```ini\n" + example + "\n```"
+}
+
+func sectionExample(section string) string {
+	if example, ok := sectionExamples[section]; ok {
+		return example
+	}
+	return "[" + section + "]"
+}
+
+func directiveSyntax(directive Directive) string {
+	value := "<value>"
+	if len(directive.Values) > 0 {
+		value = strings.Join(directive.Values, "|")
+	}
+	return directive.Name + "=" + value
+}
+
+func directiveExample(directive Directive) string {
+	if example, ok := directiveExamples[directive.Name]; ok {
+		return example
+	}
+	if len(directive.Values) > 0 {
+		return directive.Name + "=" + directive.Values[0]
+	}
+	return directive.Name + "=<value>"
 }
 
 var japaneseSectionDocs = map[string]string{
@@ -47,6 +100,300 @@ var japaneseSectionDocs = map[string]string{
 	"Swap":      "swap デバイスまたは swap ファイルを設定します。",
 	"Slice":     "cgroup のリソース制御階層を構成する slice ユニットを設定します。",
 	"Scope":     "外部プロセスを systemd 管理下に置く scope ユニットを設定します。",
+}
+
+var sectionExamples = map[string]string{
+	"Unit": `[Unit]
+Description=Example service
+After=network-online.target`,
+	"Install": `[Install]
+WantedBy=multi-user.target`,
+	"Service": `[Service]
+Type=simple
+ExecStart=/usr/bin/example`,
+	"Socket": `[Socket]
+ListenStream=127.0.0.1:8080`,
+	"Timer": `[Timer]
+OnCalendar=daily
+Persistent=true`,
+	"Path": `[Path]
+PathChanged=/etc/example.conf`,
+	"Mount": `[Mount]
+What=/dev/disk/by-label/data
+Where=/mnt/data
+Type=ext4`,
+	"Automount": `[Automount]
+Where=/mnt/data`,
+	"Swap": `[Swap]
+What=/swapfile`,
+	"Slice": `[Slice]
+CPUWeight=200
+MemoryMax=1G`,
+	"Scope": `[Scope]
+RuntimeMaxSec=1h`,
+}
+
+var directiveExamples = map[string]string{
+	"Accept":                        "Accept=false",
+	"AccuracySec":                   "AccuracySec=1min",
+	"After":                         "After=network-online.target",
+	"Alias":                         "Alias=example.service",
+	"AllowIsolate":                  "AllowIsolate=true",
+	"AllowedCPUs":                   "AllowedCPUs=0-3",
+	"AllowedMemoryNodes":            "AllowedMemoryNodes=0",
+	"Also":                          "Also=example-helper.service",
+	"AmbientCapabilities":           "AmbientCapabilities=CAP_NET_BIND_SERVICE",
+	"Backlog":                       "Backlog=128",
+	"Before":                        "Before=multi-user.target",
+	"BindsTo":                       "BindsTo=dev-sda.device",
+	"BindIPv6Only":                  "BindIPv6Only=both",
+	"BindToDevice":                  "BindToDevice=eth0",
+	"BlockIOAccounting":             "BlockIOAccounting=true",
+	"BlockIODeviceWeight":           "BlockIODeviceWeight=/dev/sda 500",
+	"BlockIOReadBandwidth":          "BlockIOReadBandwidth=/dev/sda 5M",
+	"BlockIOWeight":                 "BlockIOWeight=500",
+	"BlockIOWriteBandwidth":         "BlockIOWriteBandwidth=/dev/sda 5M",
+	"BPFProgram":                    "BPFProgram=egress:/sys/fs/bpf/example",
+	"Broadcast":                     "Broadcast=true",
+	"BusName":                       "BusName=org.example.Service",
+	"CacheDirectory":                "CacheDirectory=example",
+	"CapabilityBoundingSet":         "CapabilityBoundingSet=CAP_NET_BIND_SERVICE",
+	"CollectMode":                   "CollectMode=inactive-or-failed",
+	"ConditionACPower":              "ConditionACPower=true",
+	"ConditionCapability":           "ConditionCapability=CAP_NET_ADMIN",
+	"ConditionDirectoryNotEmpty":    "ConditionDirectoryNotEmpty=/var/lib/example",
+	"ConditionFileIsExecutable":     "ConditionFileIsExecutable=/usr/bin/example",
+	"ConditionFileNotEmpty":         "ConditionFileNotEmpty=/etc/example.conf",
+	"ConditionGroup":                "ConditionGroup=example",
+	"ConditionHost":                 "ConditionHost=server01",
+	"ConditionKernelCommandLine":    "ConditionKernelCommandLine=quiet",
+	"ConditionKernelVersion":        "ConditionKernelVersion=>=5.15",
+	"ConditionNeedsUpdate":          "ConditionNeedsUpdate=/etc",
+	"ConditionPathExists":           "ConditionPathExists=/etc/example.conf",
+	"ConditionPathExistsGlob":       "ConditionPathExistsGlob=/etc/example/*.conf",
+	"ConditionPathIsDirectory":      "ConditionPathIsDirectory=/var/lib/example",
+	"ConditionPathIsMountPoint":     "ConditionPathIsMountPoint=/mnt/data",
+	"ConditionPathIsReadWrite":      "ConditionPathIsReadWrite=/var/lib/example",
+	"ConditionPathIsSymbolicLink":   "ConditionPathIsSymbolicLink=/etc/example.link",
+	"ConditionSecurity":             "ConditionSecurity=selinux",
+	"ConditionUser":                 "ConditionUser=example",
+	"ConditionVirtualization":       "ConditionVirtualization=!container",
+	"Conflicts":                     "Conflicts=shutdown.target",
+	"ConfigurationDirectory":        "ConfigurationDirectory=example",
+	"CPUAccounting":                 "CPUAccounting=true",
+	"CPUQuota":                      "CPUQuota=50%",
+	"CPUQuotaPeriodSec":             "CPUQuotaPeriodSec=20ms",
+	"CPUShares":                     "CPUShares=1024",
+	"CPUWeight":                     "CPUWeight=200",
+	"DefaultDependencies":           "DefaultDependencies=true",
+	"DefaultInstance":               "DefaultInstance=default",
+	"DefaultMemoryLow":              "DefaultMemoryLow=256M",
+	"DefaultMemoryMin":              "DefaultMemoryMin=128M",
+	"Delegate":                      "Delegate=cpu io memory pids",
+	"Description":                   "Description=Example service",
+	"DeviceAllow":                   "DeviceAllow=/dev/null rw",
+	"DevicePolicy":                  "DevicePolicy=closed",
+	"DirectoryMode":                 "DirectoryMode=0755",
+	"DirectoryNotEmpty":             "DirectoryNotEmpty=/var/spool/example",
+	"DisableControllers":            "DisableControllers=cpu io",
+	"Documentation":                 "Documentation=man:example(8)",
+	"Environment":                   "Environment=ENV=production",
+	"EnvironmentFile":               "EnvironmentFile=/etc/default/example",
+	"ExecCondition":                 "ExecCondition=/usr/bin/test -f /etc/example.conf",
+	"ExecPaths":                     "ExecPaths=/usr/bin /usr/local/bin",
+	"ExecReload":                    "ExecReload=/bin/kill -HUP $MAINPID",
+	"ExecStart":                     "ExecStart=/usr/bin/example --foreground",
+	"ExecStartPost":                 "ExecStartPost=/usr/bin/logger example started",
+	"ExecStartPre":                  "ExecStartPre=/usr/bin/install -d /run/example",
+	"ExecStop":                      "ExecStop=/bin/kill -TERM $MAINPID",
+	"ExecStopPost":                  "ExecStopPost=/usr/bin/logger example stopped",
+	"ExitType":                      "ExitType=main",
+	"FileDescriptorName":            "FileDescriptorName=api",
+	"FileDescriptorStoreMax":        "FileDescriptorStoreMax=8",
+	"FixedRandomDelay":              "FixedRandomDelay=true",
+	"FlushPending":                  "FlushPending=true",
+	"ForceUnmount":                  "ForceUnmount=true",
+	"FreeBind":                      "FreeBind=true",
+	"Group":                         "Group=example",
+	"GuessMainPID":                  "GuessMainPID=true",
+	"IgnoreOnIsolate":               "IgnoreOnIsolate=true",
+	"InaccessiblePaths":             "InaccessiblePaths=/home",
+	"IPAddressAllow":                "IPAddressAllow=localhost",
+	"IPAddressDeny":                 "IPAddressDeny=any",
+	"IPAccounting":                  "IPAccounting=true",
+	"IPEgressFilterPath":            "IPEgressFilterPath=/sys/fs/bpf/egress",
+	"IPIngressFilterPath":           "IPIngressFilterPath=/sys/fs/bpf/ingress",
+	"IODeviceLatencyTargetSec":      "IODeviceLatencyTargetSec=/dev/sda 25ms",
+	"IODeviceWeight":                "IODeviceWeight=/dev/sda 1000",
+	"IOAccounting":                  "IOAccounting=true",
+	"IOReadBandwidthMax":            "IOReadBandwidthMax=/dev/sda 5M",
+	"IOReadIOPSMax":                 "IOReadIOPSMax=/dev/sda 1K",
+	"IOWeight":                      "IOWeight=500",
+	"IOWriteBandwidthMax":           "IOWriteBandwidthMax=/dev/sda 5M",
+	"IOWriteIOPSMax":                "IOWriteIOPSMax=/dev/sda 1K",
+	"JoinsNamespaceOf":              "JoinsNamespaceOf=example.service",
+	"KeepAlive":                     "KeepAlive=true",
+	"LazyUnmount":                   "LazyUnmount=true",
+	"LimitCORE":                     "LimitCORE=infinity",
+	"LimitCPU":                      "LimitCPU=30s",
+	"LimitDATA":                     "LimitDATA=1G",
+	"LimitFSIZE":                    "LimitFSIZE=1G",
+	"LimitLOCKS":                    "LimitLOCKS=1024",
+	"LimitMEMLOCK":                  "LimitMEMLOCK=64M",
+	"LimitMSGQUEUE":                 "LimitMSGQUEUE=8M",
+	"LimitNICE":                     "LimitNICE=0",
+	"LimitNOFILE":                   "LimitNOFILE=65536",
+	"LimitNPROC":                    "LimitNPROC=4096",
+	"LimitRSS":                      "LimitRSS=1G",
+	"LimitRTPRIO":                   "LimitRTPRIO=10",
+	"LimitRTTIME":                   "LimitRTTIME=200ms",
+	"LimitSIGPENDING":               "LimitSIGPENDING=1024",
+	"LimitSTACK":                    "LimitSTACK=8M",
+	"ListenDatagram":                "ListenDatagram=127.0.0.1:8125",
+	"ListenFIFO":                    "ListenFIFO=/run/example.fifo",
+	"ListenMessageQueue":            "ListenMessageQueue=/example",
+	"ListenNetlink":                 "ListenNetlink=audit 1",
+	"ListenSequentialPacket":        "ListenSequentialPacket=/run/example.seqpacket",
+	"ListenSpecial":                 "ListenSpecial=/dev/rfkill",
+	"ListenStream":                  "ListenStream=127.0.0.1:8080",
+	"ListenUSBFunction":             "ListenUSBFunction=/dev/ffs/example/ep1",
+	"LogExtraFields":                "LogExtraFields=SERVICE=example",
+	"LogLevelMax":                   "LogLevelMax=info",
+	"LogsDirectory":                 "LogsDirectory=example",
+	"MakeDirectory":                 "MakeDirectory=true",
+	"ManagedOOMMemoryPressure":      "ManagedOOMMemoryPressure=kill",
+	"ManagedOOMMemoryPressureLimit": "ManagedOOMMemoryPressureLimit=50%",
+	"ManagedOOMPreference":          "ManagedOOMPreference=avoid",
+	"ManagedOOMSwap":                "ManagedOOMSwap=kill",
+	"MaxConnections":                "MaxConnections=64",
+	"MaxConnectionsPerSource":       "MaxConnectionsPerSource=8",
+	"MemoryAccounting":              "MemoryAccounting=true",
+	"MemoryHigh":                    "MemoryHigh=512M",
+	"MemoryLimit":                   "MemoryLimit=1G",
+	"MemoryLow":                     "MemoryLow=128M",
+	"MemoryMax":                     "MemoryMax=1G",
+	"MemoryMin":                     "MemoryMin=64M",
+	"MemorySwapMax":                 "MemorySwapMax=2G",
+	"MessageQueueMaxMessages":       "MessageQueueMaxMessages=64",
+	"MessageQueueMessageSize":       "MessageQueueMessageSize=8192",
+	"NoDelay":                       "NoDelay=true",
+	"NoExecPaths":                   "NoExecPaths=/home",
+	"NoNewPrivileges":               "NoNewPrivileges=true",
+	"NonBlocking":                   "NonBlocking=true",
+	"NotifyAccess":                  "NotifyAccess=main",
+	"OnActiveSec":                   "OnActiveSec=5min",
+	"OnBootSec":                     "OnBootSec=10min",
+	"OnCalendar":                    "OnCalendar=*-*-* 03:00:00",
+	"OnClockChange":                 "OnClockChange=true",
+	"OnFailure":                     "OnFailure=notify-admin.service",
+	"OnFailureJobMode":              "OnFailureJobMode=replace",
+	"OnStartupSec":                  "OnStartupSec=1min",
+	"OnSuccess":                     "OnSuccess=cleanup.service",
+	"OnSuccessJobMode":              "OnSuccessJobMode=replace",
+	"OnTimezoneChange":              "OnTimezoneChange=true",
+	"OnUnitActiveSec":               "OnUnitActiveSec=1h",
+	"OnUnitInactiveSec":             "OnUnitInactiveSec=10min",
+	"OOMPolicy":                     "OOMPolicy=stop",
+	"Options":                       "Options=defaults,noatime",
+	"PartOf":                        "PartOf=example.target",
+	"PassCredentials":               "PassCredentials=true",
+	"PassEnvironment":               "PassEnvironment=HTTP_PROXY HTTPS_PROXY",
+	"PassPacketInfo":                "PassPacketInfo=true",
+	"PassSecurity":                  "PassSecurity=true",
+	"PathChanged":                   "PathChanged=/etc/example.conf",
+	"PathExists":                    "PathExists=/run/example.sock",
+	"PathExistsGlob":                "PathExistsGlob=/etc/example/*.conf",
+	"PathModified":                  "PathModified=/var/lib/example/state",
+	"PIDFile":                       "PIDFile=/run/example.pid",
+	"Persistent":                    "Persistent=true",
+	"PrivateDevices":                "PrivateDevices=true",
+	"PrivateNetwork":                "PrivateNetwork=true",
+	"PrivateTmp":                    "PrivateTmp=true",
+	"PrivateUsers":                  "PrivateUsers=true",
+	"Priority":                      "Priority=10",
+	"PropagatesReloadTo":            "PropagatesReloadTo=example-helper.service",
+	"ProtectHome":                   "ProtectHome=read-only",
+	"ProtectSystem":                 "ProtectSystem=strict",
+	"ReadOnlyPaths":                 "ReadOnlyPaths=/etc",
+	"ReadWriteOnly":                 "ReadWriteOnly=true",
+	"ReadWritePaths":                "ReadWritePaths=/var/lib/example",
+	"RefuseManualStart":             "RefuseManualStart=true",
+	"RefuseManualStop":              "RefuseManualStop=true",
+	"ReloadPropagatedFrom":          "ReloadPropagatedFrom=example.service",
+	"RemainAfterElapse":             "RemainAfterElapse=true",
+	"RemainAfterExit":               "RemainAfterExit=true",
+	"RemoveOnStop":                  "RemoveOnStop=true",
+	"RequiredBy":                    "RequiredBy=multi-user.target",
+	"Requires":                      "Requires=network-online.target",
+	"RequiresMountsFor":             "RequiresMountsFor=/var/lib/example",
+	"Requisite":                     "Requisite=network-online.target",
+	"Restart":                       "Restart=on-failure",
+	"RestartForceExitStatus":        "RestartForceExitStatus=SIGABRT",
+	"RestartPreventExitStatus":      "RestartPreventExitStatus=77",
+	"RestartSec":                    "RestartSec=5s",
+	"ReusePort":                     "ReusePort=true",
+	"RootDirectory":                 "RootDirectory=/srv/example-root",
+	"RootDirectoryStartOnly":        "RootDirectoryStartOnly=true",
+	"RootImage":                     "RootImage=/var/lib/example/root.raw",
+	"RuntimeDirectory":              "RuntimeDirectory=example",
+	"RuntimeMaxSec":                 "RuntimeMaxSec=1h",
+	"RuntimeRandomizedExtraSec":     "RuntimeRandomizedExtraSec=5min",
+	"SecureBits":                    "SecureBits=keep-caps",
+	"Service":                       "Service=example.service",
+	"Slice":                         "Slice=workload.slice",
+	"SloppyOptions":                 "SloppyOptions=true",
+	"Sockets":                       "Sockets=example.socket",
+	"SocketBindAllow":               "SocketBindAllow=ipv6:10000-65535",
+	"SocketBindDeny":                "SocketBindDeny=any",
+	"SocketGroup":                   "SocketGroup=example",
+	"SocketMode":                    "SocketMode=0660",
+	"SocketProtocol":                "SocketProtocol=tcp",
+	"SocketUser":                    "SocketUser=example",
+	"StandardError":                 "StandardError=journal",
+	"StandardInput":                 "StandardInput=null",
+	"StandardOutput":                "StandardOutput=journal",
+	"StartLimitBurst":               "StartLimitBurst=5",
+	"StartLimitIntervalSec":         "StartLimitIntervalSec=30s",
+	"StartupBlockIOWeight":          "StartupBlockIOWeight=500",
+	"StartupCPUShares":              "StartupCPUShares=2048",
+	"StartupCPUWeight":              "StartupCPUWeight=200",
+	"StartupIOWeight":               "StartupIOWeight=200",
+	"StateDirectory":                "StateDirectory=example",
+	"StopWhenUnneeded":              "StopWhenUnneeded=true",
+	"SuccessExitStatus":             "SuccessExitStatus=0 2 SIGTERM",
+	"SupplementaryGroups":           "SupplementaryGroups=audio video",
+	"Symlinks":                      "Symlinks=/run/example.alias.sock",
+	"SyslogFacility":                "SyslogFacility=daemon",
+	"SyslogIdentifier":              "SyslogIdentifier=example",
+	"SyslogLevel":                   "SyslogLevel=info",
+	"SyslogLevelPrefix":             "SyslogLevelPrefix=true",
+	"TasksAccounting":               "TasksAccounting=true",
+	"TasksMax":                      "TasksMax=512",
+	"TimeoutAbortSec":               "TimeoutAbortSec=30s",
+	"TimeoutIdleSec":                "TimeoutIdleSec=10min",
+	"TimeoutSec":                    "TimeoutSec=90s",
+	"TimeoutStartSec":               "TimeoutStartSec=30s",
+	"TimeoutStopSec":                "TimeoutStopSec=30s",
+	"Transparent":                   "Transparent=true",
+	"TriggerLimitBurst":             "TriggerLimitBurst=10",
+	"TriggerLimitIntervalSec":       "TriggerLimitIntervalSec=2s",
+	"TTYPath":                       "TTYPath=/dev/tty1",
+	"Type":                          "Type=simple",
+	"UMask":                         "UMask=0027",
+	"Unit":                          "Unit=example.service",
+	"UnsetEnvironment":              "UnsetEnvironment=DEBUG",
+	"Upholds":                       "Upholds=example-helper.service",
+	"USBFunctionDescriptors":        "USBFunctionDescriptors=/run/example/descriptors",
+	"USBFunctionStrings":            "USBFunctionStrings=/run/example/strings",
+	"User":                          "User=example",
+	"WakeSystem":                    "WakeSystem=true",
+	"WantedBy":                      "WantedBy=multi-user.target",
+	"Wants":                         "Wants=network-online.target",
+	"WatchdogSec":                   "WatchdogSec=30s",
+	"Where":                         "Where=/mnt/data",
+	"What":                          "What=/dev/disk/by-label/data",
+	"WorkingDirectory":              "WorkingDirectory=/var/lib/example",
+	"Writable":                      "Writable=true",
 }
 
 var japaneseDirectiveDocs = map[string]string{

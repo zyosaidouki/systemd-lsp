@@ -12,7 +12,7 @@ It runs over stdio and is intended to be easy to use from Neovim.
   - unknown sections
   - unknown directives in known sections
   - duplicate singleton directives
-- Completion for common sections and directives
+- Completion for common sections and directives, including syntax and examples
 - Value completion for common enum-like directives
 - Hover documentation for known directives
 - Document symbols for sections and directives

@@ -270,7 +270,7 @@ func (s *Server) completion(p TextDocumentPositionParams) any {
 				Label:            "[" + section + "]",
 				Kind:             CompletionItemKindSnippet,
 				Detail:           s.localizedSectionDetail(),
-				Documentation:    s.catalog.SectionDocFor(section, s.locale),
+				Documentation:    s.catalog.SectionDocumentationFor(section, s.locale),
 				InsertText:       "[" + section + "]$0",
 				InsertTextFormat: InsertTextFormatSnippet,
 			})
@@ -294,7 +294,7 @@ func (s *Server) completion(p TextDocumentPositionParams) any {
 			Label:            directive.Name,
 			Kind:             CompletionItemKindField,
 			Detail:           s.localizedDirectiveDetail(section),
-			Documentation:    systemd.DirectiveDocFor(section, directive, s.locale),
+			Documentation:    systemd.DirectiveDocumentationFor(section, directive, s.locale),
 			InsertText:       directive.Name + "=$0",
 			InsertTextFormat: InsertTextFormatSnippet,
 		})
@@ -331,7 +331,7 @@ func (s *Server) hover(p TextDocumentPositionParams) any {
 	}
 	if strings.HasPrefix(strings.TrimSpace(line), "[") && strings.HasSuffix(strings.TrimSpace(line), "]") {
 		section := strings.Trim(strings.TrimSpace(line), "[]")
-		if doc := s.catalog.SectionDocFor(section, s.locale); doc != "" {
+		if doc := s.catalog.SectionDocumentationFor(section, s.locale); doc != "" {
 			return Hover{
 				Contents: MarkupContent{Kind: "markdown", Value: fmt.Sprintf("**[%s]**\n\n%s", section, doc)},
 				Range:    &Range{Start: Position{Line: p.Position.Line, Character: wordRange.Start}, End: Position{Line: p.Position.Line, Character: wordRange.End}},
@@ -341,7 +341,7 @@ func (s *Server) hover(p TextDocumentPositionParams) any {
 	section := sectionAt(s.catalog, doc, p.Position.Line)
 	if directive, ok := s.catalog.Directive(section, word); ok {
 		return Hover{
-			Contents: MarkupContent{Kind: "markdown", Value: fmt.Sprintf("**%s=**\n\n%s", directive.Name, systemd.DirectiveDocFor(section, directive, s.locale))},
+			Contents: MarkupContent{Kind: "markdown", Value: fmt.Sprintf("**%s=**\n\n%s", directive.Name, systemd.DirectiveDocumentationFor(section, directive, s.locale))},
 			Range:    &Range{Start: Position{Line: p.Position.Line, Character: wordRange.Start}, End: Position{Line: p.Position.Line, Character: wordRange.End}},
 		}
 	}

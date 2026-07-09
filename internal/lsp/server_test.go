@@ -156,8 +156,17 @@ func TestCompletionUsesJapaneseDocumentation(t *testing.T) {
 	if item.Detail != "[Service] ディレクティブ" {
 		t.Fatalf("detail = %q, want Japanese detail", item.Detail)
 	}
-	if item.Documentation != "サービス起動時に実行するコマンドを指定します。" {
-		t.Fatalf("documentation = %q, want Japanese documentation", item.Documentation)
+	for _, want := range []string{
+		"**説明**",
+		"サービス起動時に実行するコマンドを指定します。",
+		"**文法**",
+		"ExecStart=<value>",
+		"**例**",
+		"ExecStart=/usr/bin/example --foreground",
+	} {
+		if !strings.Contains(item.Documentation, want) {
+			t.Fatalf("documentation = %q, missing %q", item.Documentation, want)
+		}
 	}
 }
 
@@ -184,8 +193,14 @@ func TestHoverUsesJapaneseDocumentation(t *testing.T) {
 	if err := json.Unmarshal(msg.Result, &hover); err != nil {
 		t.Fatal(err)
 	}
-	if !strings.Contains(hover.Contents.Value, "サービス起動時に実行するコマンドを指定します。") {
-		t.Fatalf("hover = %q, want Japanese documentation", hover.Contents.Value)
+	for _, want := range []string{
+		"サービス起動時に実行するコマンドを指定します。",
+		"ExecStart=<value>",
+		"ExecStart=/usr/bin/example --foreground",
+	} {
+		if !strings.Contains(hover.Contents.Value, want) {
+			t.Fatalf("hover = %q, missing %q", hover.Contents.Value, want)
+		}
 	}
 }
 
