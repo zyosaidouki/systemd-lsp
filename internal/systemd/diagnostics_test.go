@@ -139,6 +139,56 @@ func TestDiagnosticsRejectsResourceControlInTimer(t *testing.T) {
 	}
 }
 
+func TestDiagnosticsWarnsWhenForkingServiceOmitsPIDFile(t *testing.T) {
+	text := strings.Join([]string{
+		"[Service]",
+		"Type=forking",
+		"ExecStart=/usr/bin/exampled",
+		"",
+	}, "\n")
+	diagnostics := Diagnostics(NewCatalog(), text, "service")
+	if len(diagnostics) != 1 {
+		t.Fatalf("diagnostic count = %d, want 1: %#v", len(diagnostics), diagnostics)
+	}
+	if !strings.Contains(diagnostics[0].Message, "Type=forking should specify PIDFile=") {
+		t.Fatalf("message = %q, want PIDFile warning", diagnostics[0].Message)
+	}
+	if diagnostics[0].Range.Start.Line != 1 {
+		t.Fatalf("diagnostic line = %d, want Type line", diagnostics[0].Range.Start.Line)
+	}
+}
+
+func TestDiagnosticsAcceptsForkingServiceWithPIDFile(t *testing.T) {
+	text := strings.Join([]string{
+		"[Service]",
+		"Type=forking",
+		"PIDFile=/run/exampled.pid",
+		"ExecStart=/usr/bin/exampled",
+		"",
+	}, "\n")
+	diagnostics := Diagnostics(NewCatalog(), text, "service")
+	if len(diagnostics) != 0 {
+		t.Fatalf("diagnostics = %#v, want none", diagnostics)
+	}
+}
+
+func TestDiagnosticsWarnsWhenForkingServiceHasEmptyPIDFile(t *testing.T) {
+	text := strings.Join([]string{
+		"[Service]",
+		"Type=forking",
+		"PIDFile=",
+		"ExecStart=/usr/bin/exampled",
+		"",
+	}, "\n")
+	diagnostics := Diagnostics(NewCatalog(), text, "service")
+	if len(diagnostics) != 1 {
+		t.Fatalf("diagnostic count = %d, want 1: %#v", len(diagnostics), diagnostics)
+	}
+	if !strings.Contains(diagnostics[0].Message, "Type=forking should specify PIDFile=") {
+		t.Fatalf("message = %q, want PIDFile warning", diagnostics[0].Message)
+	}
+}
+
 func hasMessageContaining(messages []string, needle string) bool {
 	for _, message := range messages {
 		if strings.Contains(message, needle) {

@@ -34,6 +34,7 @@ func Diagnostics(catalog *Catalog, text, unitType string) []Diagnostic {
 	section := ""
 	sectionKnown := false
 	seenSingletons := map[string]int{}
+	serviceChecks := newServiceChecks()
 
 	for _, entry := range doc.Entries {
 		switch entry.Kind {
@@ -75,9 +76,44 @@ func Diagnostics(catalog *Catalog, text, unitType string) []Diagnostic {
 			if len(directive.Values) > 0 && shouldValidateValue(directive, entry.Value) && !containsFold(directive.Values, entry.Value) {
 				diagnostics = append(diagnostics, diagnostic(entry, SeverityWarning, fmt.Sprintf("unexpected value %q for %s", entry.Value, directive.Name)))
 			}
+			if unitType == "service" && section == "Service" {
+				serviceChecks.record(entry)
+			}
 		}
 	}
+	diagnostics = append(diagnostics, serviceChecks.diagnostics()...)
 	return diagnostics
+}
+
+type serviceChecks struct {
+	forkingType *Entry
+	hasPIDFile  bool
+}
+
+func newServiceChecks() *serviceChecks {
+	return &serviceChecks{}
+}
+
+func (c *serviceChecks) record(entry Entry) {
+	switch entry.Key {
+	case "Type":
+		if strings.EqualFold(entry.Value, "forking") {
+			c.forkingType = &entry
+		}
+	case "PIDFile":
+		if strings.TrimSpace(entry.Value) != "" {
+			c.hasPIDFile = true
+		}
+	}
+}
+
+func (c *serviceChecks) diagnostics() []Diagnostic {
+	if c.forkingType == nil || c.hasPIDFile {
+		return nil
+	}
+	return []Diagnostic{
+		diagnostic(*c.forkingType, SeverityWarning, "Type=forking should specify PIDFile= so systemd can reliably track the main process"),
+	}
 }
 
 func diagnostic(entry Entry, severity int, message string) Diagnostic {
