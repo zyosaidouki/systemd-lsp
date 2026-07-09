@@ -16,6 +16,7 @@ type Server struct {
 	docs          map[string]string
 	shutdown      bool
 	nextRequestID int
+	locale        string
 }
 
 func NewServer(catalog *systemd.Catalog, logger *log.Logger) *Server {
@@ -23,6 +24,7 @@ func NewServer(catalog *systemd.Catalog, logger *log.Logger) *Server {
 		catalog: catalog,
 		logger:  logger,
 		docs:    map[string]string{},
+		locale:  systemd.LocaleEnglish,
 	}
 }
 
@@ -62,6 +64,7 @@ func (s *Server) Handle(payload json.RawMessage) [][]byte {
 func (s *Server) dispatch(method string, params json.RawMessage) (any, [][]byte, error) {
 	switch method {
 	case "initialize":
+		s.configure(params)
 		return s.initialize(), nil, nil
 	case "initialized":
 		return nil, nil, nil
@@ -146,6 +149,27 @@ func (s *Server) dispatch(method string, params json.RawMessage) (any, [][]byte,
 		}
 		return nil, nil, nil
 	}
+}
+
+func (s *Server) configure(params json.RawMessage) {
+	var p struct {
+		Locale                string `json:"locale,omitempty"`
+		InitializationOptions struct {
+			Locale   string `json:"locale,omitempty"`
+			Language string `json:"language,omitempty"`
+		} `json:"initializationOptions,omitempty"`
+	}
+	if err := json.Unmarshal(params, &p); err != nil {
+		return
+	}
+	locale := p.InitializationOptions.Locale
+	if locale == "" {
+		locale = p.InitializationOptions.Language
+	}
+	if locale == "" {
+		locale = p.Locale
+	}
+	s.locale = systemd.NormalizeLocale(locale)
 }
 
 const defaultServiceTemplate = `[Unit]
@@ -245,8 +269,8 @@ func (s *Server) completion(p TextDocumentPositionParams) any {
 			items = append(items, CompletionItem{
 				Label:            "[" + section + "]",
 				Kind:             CompletionItemKindSnippet,
-				Detail:           "systemd section",
-				Documentation:    s.catalog.SectionDoc(section),
+				Detail:           s.localizedSectionDetail(),
+				Documentation:    s.catalog.SectionDocFor(section, s.locale),
 				InsertText:       "[" + section + "]$0",
 				InsertTextFormat: InsertTextFormatSnippet,
 			})
@@ -269,8 +293,8 @@ func (s *Server) completion(p TextDocumentPositionParams) any {
 		items = append(items, CompletionItem{
 			Label:            directive.Name,
 			Kind:             CompletionItemKindField,
-			Detail:           "[" + section + "] directive",
-			Documentation:    directive.Doc,
+			Detail:           s.localizedDirectiveDetail(section),
+			Documentation:    systemd.DirectiveDocFor(section, directive, s.locale),
 			InsertText:       directive.Name + "=$0",
 			InsertTextFormat: InsertTextFormatSnippet,
 		})
@@ -291,7 +315,7 @@ func (s *Server) valueCompletions(section, key, prefix string) []CompletionItem 
 		items = append(items, CompletionItem{
 			Label:      value,
 			Kind:       CompletionItemKindValue,
-			Detail:     key + " value",
+			Detail:     s.localizedValueDetail(key),
 			InsertText: value,
 		})
 	}
@@ -307,7 +331,7 @@ func (s *Server) hover(p TextDocumentPositionParams) any {
 	}
 	if strings.HasPrefix(strings.TrimSpace(line), "[") && strings.HasSuffix(strings.TrimSpace(line), "]") {
 		section := strings.Trim(strings.TrimSpace(line), "[]")
-		if doc := s.catalog.SectionDoc(section); doc != "" {
+		if doc := s.catalog.SectionDocFor(section, s.locale); doc != "" {
 			return Hover{
 				Contents: MarkupContent{Kind: "markdown", Value: fmt.Sprintf("**[%s]**\n\n%s", section, doc)},
 				Range:    &Range{Start: Position{Line: p.Position.Line, Character: wordRange.Start}, End: Position{Line: p.Position.Line, Character: wordRange.End}},
@@ -317,11 +341,32 @@ func (s *Server) hover(p TextDocumentPositionParams) any {
 	section := sectionAt(s.catalog, doc, p.Position.Line)
 	if directive, ok := s.catalog.Directive(section, word); ok {
 		return Hover{
-			Contents: MarkupContent{Kind: "markdown", Value: fmt.Sprintf("**%s=**\n\n%s", directive.Name, directive.Doc)},
+			Contents: MarkupContent{Kind: "markdown", Value: fmt.Sprintf("**%s=**\n\n%s", directive.Name, systemd.DirectiveDocFor(section, directive, s.locale))},
 			Range:    &Range{Start: Position{Line: p.Position.Line, Character: wordRange.Start}, End: Position{Line: p.Position.Line, Character: wordRange.End}},
 		}
 	}
 	return nil
+}
+
+func (s *Server) localizedSectionDetail() string {
+	if s.locale == systemd.LocaleJapanese {
+		return "systemd セクション"
+	}
+	return "systemd section"
+}
+
+func (s *Server) localizedDirectiveDetail(section string) string {
+	if s.locale == systemd.LocaleJapanese {
+		return "[" + section + "] ディレクティブ"
+	}
+	return "[" + section + "] directive"
+}
+
+func (s *Server) localizedValueDetail(key string) string {
+	if s.locale == systemd.LocaleJapanese {
+		return key + " の値"
+	}
+	return key + " value"
 }
 
 func (s *Server) documentSymbols(uri string) []DocumentSymbol {

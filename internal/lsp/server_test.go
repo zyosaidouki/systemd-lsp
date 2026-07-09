@@ -2,6 +2,7 @@ package lsp
 
 import (
 	"encoding/json"
+	"strings"
 	"testing"
 
 	"github.com/zyosaidouki/systemd-lsp/internal/systemd"
@@ -122,6 +123,69 @@ func TestCompletionReturnsSectionSnippets(t *testing.T) {
 	}
 	if item.InsertTextFormat != InsertTextFormatSnippet {
 		t.Fatalf("[Service] insertTextFormat = %d, want snippet", item.InsertTextFormat)
+	}
+}
+
+func TestCompletionUsesJapaneseDocumentation(t *testing.T) {
+	server := NewServer(systemd.NewCatalog(), nil)
+	init := []byte(`{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"initializationOptions":{"locale":"ja"}}}`)
+	if len(server.Handle(init)) != 1 {
+		t.Fatal("initialize returned no response")
+	}
+	open := []byte(`{"jsonrpc":"2.0","method":"textDocument/didOpen","params":{"textDocument":{"uri":"file:///tmp/demo.service","languageId":"systemd","version":1,"text":"[Service]\n"}}}`)
+	if len(server.Handle(open)) != 1 {
+		t.Fatal("didOpen did not publish diagnostics")
+	}
+	payload := []byte(`{"jsonrpc":"2.0","id":2,"method":"textDocument/completion","params":{"textDocument":{"uri":"file:///tmp/demo.service"},"position":{"line":1,"character":0}}}`)
+	responses := server.Handle(payload)
+	if len(responses) != 1 {
+		t.Fatal("Handle returned no response")
+	}
+	var msg rpcMessage
+	if err := json.Unmarshal(responses[0], &msg); err != nil {
+		t.Fatal(err)
+	}
+	var items []CompletionItem
+	if err := json.Unmarshal(msg.Result, &items); err != nil {
+		t.Fatal(err)
+	}
+	item, ok := completionByLabel(items, "ExecStart")
+	if !ok {
+		t.Fatal("missing ExecStart completion")
+	}
+	if item.Detail != "[Service] ディレクティブ" {
+		t.Fatalf("detail = %q, want Japanese detail", item.Detail)
+	}
+	if item.Documentation != "サービス起動時に実行するコマンドを指定します。" {
+		t.Fatalf("documentation = %q, want Japanese documentation", item.Documentation)
+	}
+}
+
+func TestHoverUsesJapaneseDocumentation(t *testing.T) {
+	server := NewServer(systemd.NewCatalog(), nil)
+	init := []byte(`{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"initializationOptions":{"locale":"ja"}}}`)
+	if len(server.Handle(init)) != 1 {
+		t.Fatal("initialize returned no response")
+	}
+	open := []byte(`{"jsonrpc":"2.0","method":"textDocument/didOpen","params":{"textDocument":{"uri":"file:///tmp/demo.service","languageId":"systemd","version":1,"text":"[Service]\nExecStart=/bin/true\n"}}}`)
+	if len(server.Handle(open)) != 1 {
+		t.Fatal("didOpen did not publish diagnostics")
+	}
+	payload := []byte(`{"jsonrpc":"2.0","id":2,"method":"textDocument/hover","params":{"textDocument":{"uri":"file:///tmp/demo.service"},"position":{"line":1,"character":3}}}`)
+	responses := server.Handle(payload)
+	if len(responses) != 1 {
+		t.Fatal("Handle returned no response")
+	}
+	var msg rpcMessage
+	if err := json.Unmarshal(responses[0], &msg); err != nil {
+		t.Fatal(err)
+	}
+	var hover Hover
+	if err := json.Unmarshal(msg.Result, &hover); err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(hover.Contents.Value, "サービス起動時に実行するコマンドを指定します。") {
+		t.Fatalf("hover = %q, want Japanese documentation", hover.Contents.Value)
 	}
 }
 

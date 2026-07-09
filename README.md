@@ -47,6 +47,27 @@ vim.api.nvim_create_autocmd("FileType", {
 })
 ```
 
+Completion and hover documentation is English by default. To show Japanese
+documentation:
+
+```lua
+vim.api.nvim_create_autocmd("FileType", {
+  pattern = "systemd",
+  callback = function()
+    vim.lsp.start({
+      name = "systemd-lsp",
+      cmd = { "systemd-lsp" },
+      root_dir = vim.fs.root(0, { ".git" }) or vim.fn.getcwd(),
+      initialization_options = {
+        locale = "ja",
+      },
+    })
+  end,
+})
+```
+
+Use `locale = "en"` or omit `initialization_options` for English.
+
 If your Neovim does not detect systemd files automatically, add:
 
 ```lua
