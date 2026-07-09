@@ -1,0 +1,36 @@
+# Build artifacts
+/systemd-lsp
+/bin/
+/dist/
+/build/
+*.exe
+*.test
+*.out
+coverage.*
+
+# Local editor and OS files
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Local environment and secrets
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.crt
+*.p12
+*.pfx
+id_rsa
+id_dsa
+id_ecdsa
+id_ed25519
+
+# Logs and temporary files
+*.log
+tmp/
+temp/
