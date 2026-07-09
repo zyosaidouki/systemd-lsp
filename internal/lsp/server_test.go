@@ -85,6 +85,9 @@ func TestCompletionReturnsServiceDirectives(t *testing.T) {
 	if !hasCompletion(items, "Delegate") {
 		t.Fatalf("completion labels = %#v, missing Delegate", items)
 	}
+	if !hasCompletion(items, "CPUAffinity") {
+		t.Fatalf("completion labels = %#v, missing CPUAffinity", items)
+	}
 	item, ok := completionByLabel(items, "ExecStart")
 	if !ok {
 		t.Fatal("missing ExecStart completion")

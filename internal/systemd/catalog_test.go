@@ -75,3 +75,16 @@ func TestResourceControlDirectivesAreNotAppliedToTimerOrPath(t *testing.T) {
 		}
 	}
 }
+
+func TestExecContextDirectivesIncludeCPUAffinity(t *testing.T) {
+	catalog := NewCatalog()
+	for _, section := range []string{"Service", "Socket", "Mount", "Swap"} {
+		directive, ok := catalog.Directive(section, "CPUAffinity")
+		if !ok {
+			t.Fatalf("[%s] missing CPUAffinity directive", section)
+		}
+		if !directive.Multiple {
+			t.Fatalf("[%s] CPUAffinity should allow repeated assignments", section)
+		}
+	}
+}

@@ -281,6 +281,7 @@ func execContextDirectives() []Directive {
 		{Name: "LogExtraFields", Doc: "Additional journal fields.", Multiple: true},
 		{Name: "CapabilityBoundingSet", Doc: "Restrict Linux capabilities.", Multiple: true},
 		{Name: "AmbientCapabilities", Doc: "Capabilities added to the ambient set.", Multiple: true},
+		{Name: "CPUAffinity", Doc: "CPU affinity mask for executed processes; accepts CPU indexes, ranges, or numa.", Multiple: true, ValueKind: "cpu-set"},
 		{Name: "NoNewPrivileges", Doc: "Prevent gaining new privileges.", Values: boolValues},
 		{Name: "SecureBits", Doc: "Securebits flags for executed processes.", Multiple: true},
 		{Name: "PrivateTmp", Doc: "Use a private /tmp and /var/tmp namespace.", Values: boolValues},
