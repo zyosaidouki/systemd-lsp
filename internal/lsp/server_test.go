@@ -165,15 +165,17 @@ func TestCompletionUsesJapaneseDocumentation(t *testing.T) {
 		t.Fatalf("detail = %q, want Japanese detail", item.Detail)
 	}
 	for _, want := range []string{
-		"**説明**",
 		"サービス起動時に実行するコマンドを指定します。",
-		"**文法**",
 		"ExecStart=<command>",
-		"**例**",
 		"ExecStart=/usr/bin/example --foreground",
 	} {
 		if !strings.Contains(item.Documentation, want) {
 			t.Fatalf("documentation = %q, missing %q", item.Documentation, want)
+		}
+	}
+	for _, unwanted := range []string{"**説明**", "**文法**", "**例**"} {
+		if strings.Contains(item.Documentation, unwanted) {
+			t.Fatalf("documentation = %q, should not contain heading %q", item.Documentation, unwanted)
 		}
 	}
 }

@@ -32,15 +32,17 @@ func TestEnglishDirectiveDocUsesCatalogText(t *testing.T) {
 func TestDirectiveDocumentationIncludesSyntaxAndExample(t *testing.T) {
 	doc := DirectiveDocumentationFor("Service", Directive{Name: "Restart", Doc: "Restart policy for the service.", Values: []string{"no", "on-failure"}}, LocaleEnglish)
 	for _, want := range []string{
-		"**Description**",
 		"Restart policy for the service.",
-		"**Syntax**",
 		"Restart=no|on-failure",
-		"**Example**",
 		"Restart=on-failure",
 	} {
 		if !strings.Contains(doc, want) {
 			t.Fatalf("doc = %q, missing %q", doc, want)
+		}
+	}
+	for _, unwanted := range []string{"**Description**", "**Syntax**", "**Example**", "**説明**", "**文法**", "**例**"} {
+		if strings.Contains(doc, unwanted) {
+			t.Fatalf("doc = %q, should not contain heading %q", doc, unwanted)
 		}
 	}
 }
@@ -48,15 +50,17 @@ func TestDirectiveDocumentationIncludesSyntaxAndExample(t *testing.T) {
 func TestSectionDocumentationIncludesSyntaxAndExample(t *testing.T) {
 	doc := NewCatalog().SectionDocumentationFor("Service", LocaleJapanese)
 	for _, want := range []string{
-		"**説明**",
 		"サービスプロセスの起動方法",
-		"**文法**",
 		"[Service]",
-		"**例**",
 		"ExecStart=/usr/bin/example",
 	} {
 		if !strings.Contains(doc, want) {
 			t.Fatalf("doc = %q, missing %q", doc, want)
+		}
+	}
+	for _, unwanted := range []string{"**説明**", "**文法**", "**例**", "**Description**", "**Syntax**", "**Example**"} {
+		if strings.Contains(doc, unwanted) {
+			t.Fatalf("doc = %q, should not contain heading %q", doc, unwanted)
 		}
 	}
 }

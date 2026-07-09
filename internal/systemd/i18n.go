@@ -26,14 +26,10 @@ func (c *Catalog) SectionDocFor(section, locale string) string {
 }
 
 func (c *Catalog) SectionDocumentationFor(section, locale string) string {
-	locale = NormalizeLocale(locale)
 	doc := c.SectionDocFor(section, locale)
 	syntax := "[" + section + "]"
 	example := sectionExample(section)
-	if locale == LocaleJapanese {
-		return markdownDoc("説明", doc, "文法", syntax, "例", example)
-	}
-	return markdownDoc("Description", doc, "Syntax", syntax, "Example", example)
+	return markdownDoc(doc, "", syntax, example)
 }
 
 func DirectiveDocFor(section string, directive Directive, locale string) string {
@@ -53,23 +49,23 @@ func DirectiveDocFor(section string, directive Directive, locale string) string 
 }
 
 func DirectiveDocumentationFor(section string, directive Directive, locale string) string {
-	locale = NormalizeLocale(locale)
 	doc := DirectiveDocFor(section, directive, locale)
 	syntax := directiveSyntax(directive)
 	example := directiveExample(directive)
-	if directive.ManPage != "" {
-		doc += "\n\nMan page: " + directive.ManPage
-	}
-	if locale == LocaleJapanese {
-		return markdownDoc("説明", doc, "文法", syntax, "例", example)
-	}
-	return markdownDoc("Description", doc, "Syntax", syntax, "Example", example)
+	return markdownDoc(doc, directive.ManPage, syntax, example)
 }
 
-func markdownDoc(descriptionTitle, description, syntaxTitle, syntax, exampleTitle, example string) string {
-	return "**" + descriptionTitle + "**\n\n" + description +
-		"\n\n**" + syntaxTitle + "**\n\n```ini\n" + syntax +
-		"\n```\n\n**" + exampleTitle + "**\n\n```ini\n" + example + "\n```"
+func markdownDoc(description, manPage, syntax, example string) string {
+	parts := []string{description}
+	if manPage != "" {
+		parts = append(parts, "`"+manPage+"`")
+	}
+	lines := []string{syntax}
+	if example != "" && example != syntax {
+		lines = append(lines, example)
+	}
+	parts = append(parts, "```ini\n"+strings.Join(lines, "\n")+"\n```")
+	return strings.Join(parts, "\n\n")
 }
 
 func sectionExample(section string) string {
