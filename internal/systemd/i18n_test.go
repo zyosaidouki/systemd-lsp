@@ -51,12 +51,14 @@ func TestSectionDocumentationIncludesSyntaxAndExample(t *testing.T) {
 	doc := NewCatalog().SectionDocumentationFor("Service", LocaleJapanese)
 	for _, want := range []string{
 		"サービスプロセスの起動方法",
-		"[Service]",
-		"ExecStart=/usr/bin/example",
+		"```ini\n[Service]\nType=simple\nExecStart=/usr/bin/example\n```",
 	} {
 		if !strings.Contains(doc, want) {
 			t.Fatalf("doc = %q, missing %q", doc, want)
 		}
+	}
+	if strings.Contains(doc, "[Service]\n[Service]") {
+		t.Fatalf("doc = %q, contains a duplicate section header", doc)
 	}
 	for _, unwanted := range []string{"**説明**", "**文法**", "**例**", "**Description**", "**Syntax**", "**Example**"} {
 		if strings.Contains(doc, unwanted) {

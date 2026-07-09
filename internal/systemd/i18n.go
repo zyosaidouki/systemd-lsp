@@ -60,8 +60,12 @@ func markdownDoc(description, manPage, syntax, example string) string {
 	if manPage != "" {
 		parts = append(parts, "`"+manPage+"`")
 	}
-	lines := []string{syntax}
-	if example != "" && example != syntax {
+	lines := make([]string, 0, 2)
+	firstExampleLine, _, _ := strings.Cut(example, "\n")
+	if syntax != "" && strings.TrimSuffix(firstExampleLine, "\r") != syntax {
+		lines = append(lines, syntax)
+	}
+	if example != "" {
 		lines = append(lines, example)
 	}
 	parts = append(parts, "```ini\n"+strings.Join(lines, "\n")+"\n```")
