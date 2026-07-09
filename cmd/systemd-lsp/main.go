@@ -11,8 +11,8 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/zako/systemd-lsp/internal/lsp"
-	"github.com/zako/systemd-lsp/internal/systemd"
+	"github.com/zyosaidouki/systemd-lsp/internal/lsp"
+	"github.com/zyosaidouki/systemd-lsp/internal/systemd"
 )
 
 func main() {

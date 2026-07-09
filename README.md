@@ -20,7 +20,7 @@ It runs over stdio and is intended to be easy to use from Neovim.
 ## Install
 
 ```sh
-go install github.com/zako/systemd-lsp/cmd/systemd-lsp@latest
+go install github.com/zyosaidouki/systemd-lsp/cmd/systemd-lsp@latest
 ```
 
 For local development from this repository:

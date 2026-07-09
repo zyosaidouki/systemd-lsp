@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"testing"
 
-	"github.com/zako/systemd-lsp/internal/systemd"
+	"github.com/zyosaidouki/systemd-lsp/internal/systemd"
 )
 
 func TestInitialize(t *testing.T) {
@@ -78,6 +78,9 @@ func TestCompletionReturnsServiceDirectives(t *testing.T) {
 	}
 	if !hasCompletion(items, "ExecStart") {
 		t.Fatalf("completion labels = %#v, missing ExecStart", items)
+	}
+	if !hasCompletion(items, "Delegate") {
+		t.Fatalf("completion labels = %#v, missing Delegate", items)
 	}
 }
 

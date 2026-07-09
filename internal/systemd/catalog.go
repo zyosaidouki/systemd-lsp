@@ -181,15 +181,15 @@ var builtinDirectives = map[string][]Directive{
 		{Name: "Also", Doc: "Additional units enabled or disabled together with this unit.", Multiple: true},
 		{Name: "DefaultInstance", Doc: "Default instance name for template units."},
 	},
-	"Service":   serviceDirectives,
-	"Socket":    socketDirectives,
+	"Service":   combineDirectives(serviceDirectives, resourceControlDirectives),
+	"Socket":    combineDirectives(socketDirectives, resourceControlDirectives),
 	"Timer":     timerDirectives,
 	"Path":      pathDirectives,
-	"Mount":     mountDirectives,
+	"Mount":     combineDirectives(mountDirectives, resourceControlDirectives),
 	"Automount": automountDirectives,
-	"Swap":      swapDirectives,
+	"Swap":      combineDirectives(swapDirectives, resourceControlDirectives),
 	"Slice":     resourceControlDirectives,
-	"Scope":     append(scopeDirectives, resourceControlDirectives...),
+	"Scope":     combineDirectives(scopeDirectives, resourceControlDirectives),
 }
 
 var boolValues = []string{"true", "false", "yes", "no", "on", "off", "1", "0"}
@@ -288,14 +288,6 @@ func execContextDirectives() []Directive {
 		{Name: "LimitNICE", Doc: "Nice priority resource limit."},
 		{Name: "LimitRTPRIO", Doc: "Realtime priority resource limit."},
 		{Name: "LimitRTTIME", Doc: "Realtime runtime resource limit."},
-		{Name: "CPUAccounting", Doc: "Enable CPU accounting.", Values: boolValues},
-		{Name: "MemoryAccounting", Doc: "Enable memory accounting.", Values: boolValues},
-		{Name: "IOAccounting", Doc: "Enable IO accounting.", Values: boolValues},
-		{Name: "TasksAccounting", Doc: "Enable task accounting.", Values: boolValues},
-		{Name: "CPUWeight", Doc: "CPU scheduling weight."},
-		{Name: "MemoryMax", Doc: "Maximum memory usage."},
-		{Name: "MemoryHigh", Doc: "Memory throttling threshold."},
-		{Name: "TasksMax", Doc: "Maximum number of tasks."},
 	}
 }
 
@@ -399,22 +391,58 @@ var swapDirectives = append([]Directive{
 }, execContextDirectives()...)
 
 var resourceControlDirectives = []Directive{
+	{Name: "AllowedCPUs", Doc: "Restrict processes to specific CPU indices or CPU ranges."},
+	{Name: "AllowedMemoryNodes", Doc: "Restrict processes to specific memory NUMA node indices or ranges."},
+	{Name: "BlockIOAccounting", Doc: "Deprecated legacy cgroup-v1 block I/O accounting setting; use IOAccounting= instead.", Values: boolValues},
+	{Name: "BlockIODeviceWeight", Doc: "Deprecated per-device legacy block I/O weight; use IODeviceWeight= instead.", Multiple: true},
+	{Name: "BlockIOReadBandwidth", Doc: "Deprecated per-device legacy read bandwidth limit; use IOReadBandwidthMax= instead.", Multiple: true},
+	{Name: "BlockIOWeight", Doc: "Deprecated default legacy block I/O weight; use IOWeight= instead."},
+	{Name: "BlockIOWriteBandwidth", Doc: "Deprecated per-device legacy write bandwidth limit; use IOWriteBandwidthMax= instead.", Multiple: true},
+	{Name: "BPFProgram", Doc: "Attach a cgroup BPF program using type:program-path syntax.", Multiple: true},
+	{Name: "CPUShares", Doc: "Deprecated legacy CPU share weight; use CPUWeight= instead."},
 	{Name: "CPUAccounting", Doc: "Enable CPU accounting.", Values: boolValues},
+	{Name: "CPUQuotaPeriodSec", Doc: "CPU quota measurement period."},
 	{Name: "CPUWeight", Doc: "CPU scheduling weight."},
 	{Name: "CPUQuota", Doc: "CPU time quota percentage."},
+	{Name: "DefaultMemoryLow", Doc: "Default MemoryLow= allocation used by child cgroups."},
+	{Name: "DefaultMemoryMin", Doc: "Default MemoryMin= allocation used by child cgroups."},
+	{Name: "Delegate", Doc: "Delegate cgroup subtree management to the unit, optionally limited to selected controllers."},
+	{Name: "DeviceAllow", Doc: "Device access rules.", Multiple: true},
+	{Name: "DevicePolicy", Doc: "Device access policy.", Values: []string{"auto", "closed", "strict"}},
+	{Name: "DisableControllers", Doc: "Prevent selected cgroup controllers from being enabled for child units.", Multiple: true},
+	{Name: "IPAddressAllow", Doc: "Allow IP traffic to matching addresses or symbolic networks.", Multiple: true},
+	{Name: "IPAddressDeny", Doc: "Deny IP traffic to matching addresses or symbolic networks.", Multiple: true},
+	{Name: "IPAccounting", Doc: "Enable IP accounting.", Values: boolValues},
+	{Name: "IPEgressFilterPath", Doc: "Attach a pinned BPF program for egress IP packet filtering.", Multiple: true},
+	{Name: "IPIngressFilterPath", Doc: "Attach a pinned BPF program for ingress IP packet filtering.", Multiple: true},
+	{Name: "IODeviceLatencyTargetSec", Doc: "Per-device target I/O latency.", Multiple: true},
+	{Name: "IODeviceWeight", Doc: "Per-device I/O weight.", Multiple: true},
+	{Name: "IOReadBandwidthMax", Doc: "Per-device read bandwidth limit.", Multiple: true},
+	{Name: "IOReadIOPSMax", Doc: "Per-device read IOPS limit.", Multiple: true},
+	{Name: "IOWeight", Doc: "Default I/O weight."},
+	{Name: "IOWriteBandwidthMax", Doc: "Per-device write bandwidth limit.", Multiple: true},
+	{Name: "IOWriteIOPSMax", Doc: "Per-device write IOPS limit.", Multiple: true},
+	{Name: "IOAccounting", Doc: "Enable I/O accounting.", Values: boolValues},
+	{Name: "ManagedOOMMemoryPressure", Doc: "Configure systemd-oomd memory pressure action for this unit's cgroup.", Values: []string{"auto", "kill"}},
+	{Name: "ManagedOOMMemoryPressureLimit", Doc: "Override the memory pressure limit for systemd-oomd."},
+	{Name: "ManagedOOMPreference", Doc: "Adjust systemd-oomd candidate preference for this cgroup.", Values: []string{"none", "avoid", "omit"}},
+	{Name: "ManagedOOMSwap", Doc: "Configure systemd-oomd swap action for this unit's cgroup.", Values: []string{"auto", "kill"}},
 	{Name: "MemoryAccounting", Doc: "Enable memory accounting.", Values: boolValues},
+	{Name: "MemoryLimit", Doc: "Deprecated legacy memory limit; use MemoryMax= instead."},
 	{Name: "MemoryMin", Doc: "Minimum protected memory."},
 	{Name: "MemoryLow", Doc: "Best-effort protected memory."},
 	{Name: "MemoryHigh", Doc: "Memory throttling threshold."},
 	{Name: "MemoryMax", Doc: "Maximum memory usage."},
 	{Name: "MemorySwapMax", Doc: "Maximum swap usage."},
+	{Name: "Slice", Doc: "Slice unit to place this unit in."},
+	{Name: "SocketBindAllow", Doc: "Allow binding sockets matching a cgroup socket bind rule.", Multiple: true},
+	{Name: "SocketBindDeny", Doc: "Deny binding sockets matching a cgroup socket bind rule.", Multiple: true},
+	{Name: "StartupBlockIOWeight", Doc: "Deprecated startup-phase legacy block I/O weight; use StartupIOWeight= instead."},
+	{Name: "StartupCPUShares", Doc: "Deprecated startup-phase legacy CPU share weight; use StartupCPUWeight= instead."},
+	{Name: "StartupCPUWeight", Doc: "Startup-phase CPU scheduling weight."},
+	{Name: "StartupIOWeight", Doc: "Startup-phase I/O weight."},
 	{Name: "TasksAccounting", Doc: "Enable task accounting.", Values: boolValues},
 	{Name: "TasksMax", Doc: "Maximum number of tasks."},
-	{Name: "IOAccounting", Doc: "Enable IO accounting.", Values: boolValues},
-	{Name: "IOWeight", Doc: "Default IO weight."},
-	{Name: "IPAccounting", Doc: "Enable IP accounting.", Values: boolValues},
-	{Name: "DeviceAllow", Doc: "Device access rules.", Multiple: true},
-	{Name: "DevicePolicy", Doc: "Device access policy.", Values: []string{"auto", "closed", "strict"}},
 }
 
 var scopeDirectives = []Directive{
@@ -422,4 +450,36 @@ var scopeDirectives = []Directive{
 	{Name: "RuntimeMaxSec", Doc: "Maximum runtime before termination."},
 	{Name: "RuntimeRandomizedExtraSec", Doc: "Random extra runtime added to RuntimeMaxSec."},
 	{Name: "TimeoutStopSec", Doc: "Maximum time allowed for stopping the scope."},
+}
+
+func combineDirectives(groups ...[]Directive) []Directive {
+	result := make([]Directive, 0)
+	seen := map[string]int{}
+	for _, group := range groups {
+		for _, directive := range group {
+			if idx, ok := seen[directive.Name]; ok {
+				result[idx] = mergeDirective(result[idx], directive)
+				continue
+			}
+			seen[directive.Name] = len(result)
+			result = append(result, directive)
+		}
+	}
+	return result
+}
+
+func mergeDirective(existing, next Directive) Directive {
+	if existing.Doc == "" {
+		existing.Doc = next.Doc
+	}
+	if next.Multiple {
+		existing.Multiple = true
+	}
+	if len(existing.Values) == 0 {
+		existing.Values = next.Values
+	}
+	if len(existing.UnitTypes) == 0 {
+		existing.UnitTypes = next.UnitTypes
+	}
+	return existing
 }

@@ -7,7 +7,7 @@ import (
 	"path"
 	"strings"
 
-	"github.com/zako/systemd-lsp/internal/systemd"
+	"github.com/zyosaidouki/systemd-lsp/internal/systemd"
 )
 
 type Server struct {

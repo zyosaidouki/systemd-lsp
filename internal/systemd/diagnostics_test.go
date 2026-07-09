@@ -66,6 +66,79 @@ func TestDiagnosticsWarnsForWrongSectionType(t *testing.T) {
 	}
 }
 
+func TestDiagnosticsAcceptsResourceControlDirectives(t *testing.T) {
+	text := strings.Join([]string{
+		"[Service]",
+		"Slice=workload.slice",
+		"Delegate=cpu io memory pids",
+		"DisableControllers=cpu io",
+		"AllowedCPUs=0-3",
+		"AllowedMemoryNodes=0",
+		"CPUAccounting=yes",
+		"StartupCPUWeight=200",
+		"CPUWeight=500",
+		"CPUQuota=50%",
+		"CPUQuotaPeriodSec=20ms",
+		"MemoryAccounting=yes",
+		"DefaultMemoryMin=128M",
+		"DefaultMemoryLow=256M",
+		"MemoryMin=64M",
+		"MemoryLow=128M",
+		"MemoryHigh=512M",
+		"MemoryMax=1G",
+		"MemorySwapMax=2G",
+		"TasksAccounting=yes",
+		"TasksMax=512",
+		"IOAccounting=yes",
+		"StartupIOWeight=200",
+		"IOWeight=500",
+		"IODeviceWeight=/dev/sda 1000",
+		"IOReadBandwidthMax=/dev/sda 5M",
+		"IOWriteBandwidthMax=/dev/sda 5M",
+		"IOReadIOPSMax=/dev/sda 1K",
+		"IOWriteIOPSMax=/dev/sda 1K",
+		"IODeviceLatencyTargetSec=/dev/sda 25ms",
+		"IPAccounting=yes",
+		"IPAddressAllow=localhost",
+		"IPAddressDeny=any",
+		"IPIngressFilterPath=/sys/fs/bpf/ingress",
+		"IPEgressFilterPath=/sys/fs/bpf/egress",
+		"BPFProgram=egress:/sys/fs/bpf/egress-hook",
+		"SocketBindAllow=ipv6:10000-65535",
+		"SocketBindDeny=any",
+		"DeviceAllow=/dev/null rw",
+		"DevicePolicy=closed",
+		"ManagedOOMSwap=kill",
+		"ManagedOOMMemoryPressure=auto",
+		"ManagedOOMMemoryPressureLimit=50%",
+		"ManagedOOMPreference=avoid",
+		"CPUShares=1024",
+		"StartupCPUShares=2048",
+		"MemoryLimit=1G",
+		"BlockIOAccounting=yes",
+		"StartupBlockIOWeight=500",
+		"BlockIOWeight=500",
+		"BlockIODeviceWeight=/dev/sda 500",
+		"BlockIOReadBandwidth=/dev/sda 5M",
+		"BlockIOWriteBandwidth=/dev/sda 5M",
+		"",
+	}, "\n")
+	diagnostics := Diagnostics(NewCatalog(), text, "service")
+	if len(diagnostics) != 0 {
+		t.Fatalf("diagnostics = %#v, want none", diagnostics)
+	}
+}
+
+func TestDiagnosticsRejectsResourceControlInTimer(t *testing.T) {
+	diagnostics := Diagnostics(NewCatalog(), "[Timer]\nCPUWeight=500\n", "timer")
+	if len(diagnostics) != 1 {
+		t.Fatalf("diagnostic count = %d, want 1: %#v", len(diagnostics), diagnostics)
+	}
+	if !strings.Contains(diagnostics[0].Message, "unknown directive CPUWeight in [Timer]") {
+		t.Fatalf("message = %q, want unknown directive warning", diagnostics[0].Message)
+	}
+}
+
 func hasMessageContaining(messages []string, needle string) bool {
 	for _, message := range messages {
 		if strings.Contains(message, needle) {
