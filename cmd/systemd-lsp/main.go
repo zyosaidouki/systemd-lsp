@@ -25,7 +25,7 @@ func main() {
 }
 
 type handler interface {
-	Handle(json.RawMessage) ([]byte, bool)
+	Handle(json.RawMessage) [][]byte
 }
 
 func serve(in io.Reader, out io.Writer, h handler) error {
@@ -35,12 +35,10 @@ func serve(in io.Reader, out io.Writer, h handler) error {
 		if err != nil {
 			return err
 		}
-		response, ok := h.Handle(payload)
-		if !ok {
-			continue
-		}
-		if err := writeMessage(out, response); err != nil {
-			return err
+		for _, response := range h.Handle(payload) {
+			if err := writeMessage(out, response); err != nil {
+				return err
+			}
 		}
 	}
 }

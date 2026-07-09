@@ -10,12 +10,12 @@ import (
 func TestInitialize(t *testing.T) {
 	server := NewServer(systemd.NewCatalog(), nil)
 	payload := []byte(`{"jsonrpc":"2.0","id":1,"method":"initialize","params":{}}`)
-	response, ok := server.Handle(payload)
-	if !ok {
+	responses := server.Handle(payload)
+	if len(responses) != 1 {
 		t.Fatal("Handle returned no response")
 	}
 	var msg rpcMessage
-	if err := json.Unmarshal(response, &msg); err != nil {
+	if err := json.Unmarshal(responses[0], &msg); err != nil {
 		t.Fatal(err)
 	}
 	if msg.Error != nil {
@@ -35,12 +35,12 @@ func TestInitialize(t *testing.T) {
 func TestDidOpenPublishesDiagnostics(t *testing.T) {
 	server := NewServer(systemd.NewCatalog(), nil)
 	payload := []byte(`{"jsonrpc":"2.0","method":"textDocument/didOpen","params":{"textDocument":{"uri":"file:///tmp/demo.service","languageId":"systemd","version":1,"text":"Description=outside\n"}}}`)
-	response, ok := server.Handle(payload)
-	if !ok {
+	responses := server.Handle(payload)
+	if len(responses) != 1 {
 		t.Fatal("Handle returned no notification")
 	}
 	var msg rpcMessage
-	if err := json.Unmarshal(response, &msg); err != nil {
+	if err := json.Unmarshal(responses[0], &msg); err != nil {
 		t.Fatal(err)
 	}
 	if msg.Method != "textDocument/publishDiagnostics" {
@@ -60,16 +60,16 @@ func TestDidOpenPublishesDiagnostics(t *testing.T) {
 func TestCompletionReturnsServiceDirectives(t *testing.T) {
 	server := NewServer(systemd.NewCatalog(), nil)
 	open := []byte(`{"jsonrpc":"2.0","method":"textDocument/didOpen","params":{"textDocument":{"uri":"file:///tmp/demo.service","languageId":"systemd","version":1,"text":"[Service]\n"}}}`)
-	if _, ok := server.Handle(open); !ok {
+	if len(server.Handle(open)) != 1 {
 		t.Fatal("didOpen did not publish diagnostics")
 	}
 	payload := []byte(`{"jsonrpc":"2.0","id":2,"method":"textDocument/completion","params":{"textDocument":{"uri":"file:///tmp/demo.service"},"position":{"line":1,"character":0}}}`)
-	response, ok := server.Handle(payload)
-	if !ok {
+	responses := server.Handle(payload)
+	if len(responses) != 1 {
 		t.Fatal("Handle returned no response")
 	}
 	var msg rpcMessage
-	if err := json.Unmarshal(response, &msg); err != nil {
+	if err := json.Unmarshal(responses[0], &msg); err != nil {
 		t.Fatal(err)
 	}
 	var items []CompletionItem
@@ -81,6 +81,56 @@ func TestCompletionReturnsServiceDirectives(t *testing.T) {
 	}
 	if !hasCompletion(items, "Delegate") {
 		t.Fatalf("completion labels = %#v, missing Delegate", items)
+	}
+}
+
+func TestDidOpenEmptyServiceRequestsTemplateInsertion(t *testing.T) {
+	server := NewServer(systemd.NewCatalog(), nil)
+	payload := []byte(`{"jsonrpc":"2.0","method":"textDocument/didOpen","params":{"textDocument":{"uri":"file:///tmp/demo.service","languageId":"systemd","version":1,"text":""}}}`)
+	responses := server.Handle(payload)
+	if len(responses) != 1 {
+		t.Fatalf("response count = %d, want 1", len(responses))
+	}
+	var msg rpcMessage
+	if err := json.Unmarshal(responses[0], &msg); err != nil {
+		t.Fatal(err)
+	}
+	if msg.Method != "workspace/applyEdit" {
+		t.Fatalf("method = %q, want workspace/applyEdit", msg.Method)
+	}
+	var params struct {
+		Label string `json:"label"`
+		Edit  struct {
+			Changes map[string][]struct {
+				NewText string `json:"newText"`
+			} `json:"changes"`
+		} `json:"edit"`
+	}
+	if err := json.Unmarshal(msg.Params, &params); err != nil {
+		t.Fatal(err)
+	}
+	edits := params.Edit.Changes["file:///tmp/demo.service"]
+	if len(edits) != 1 {
+		t.Fatalf("edit count = %d, want 1", len(edits))
+	}
+	if edits[0].NewText != defaultServiceTemplate {
+		t.Fatalf("newText = %q, want default service template", edits[0].NewText)
+	}
+}
+
+func TestDidOpenEmptyTimerDoesNotRequestTemplateInsertion(t *testing.T) {
+	server := NewServer(systemd.NewCatalog(), nil)
+	payload := []byte(`{"jsonrpc":"2.0","method":"textDocument/didOpen","params":{"textDocument":{"uri":"file:///tmp/demo.timer","languageId":"systemd","version":1,"text":""}}}`)
+	responses := server.Handle(payload)
+	if len(responses) != 1 {
+		t.Fatalf("response count = %d, want diagnostics notification", len(responses))
+	}
+	var msg rpcMessage
+	if err := json.Unmarshal(responses[0], &msg); err != nil {
+		t.Fatal(err)
+	}
+	if msg.Method == "workspace/applyEdit" {
+		t.Fatal("empty .timer unexpectedly requested template insertion")
 	}
 }
 

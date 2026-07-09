@@ -31,7 +31,7 @@ func TestServeWritesHandlerResponse(t *testing.T) {
 	request := []byte(`{"jsonrpc":"2.0","id":1,"method":"initialize","params":{}}`)
 	input := bytes.NewBufferString("Content-Length: " + strconv.Itoa(len(request)) + "\r\n\r\n" + string(request))
 	var output bytes.Buffer
-	err := serve(input, &output, staticHandler{response: []byte(`{"jsonrpc":"2.0","id":1,"result":null}`)})
+	err := serve(input, &output, staticHandler{responses: [][]byte{[]byte(`{"jsonrpc":"2.0","id":1,"result":null}`)}})
 	if err == nil {
 		t.Fatal("serve returned nil, want EOF after one message")
 	}
@@ -40,10 +40,28 @@ func TestServeWritesHandlerResponse(t *testing.T) {
 	}
 }
 
-type staticHandler struct {
-	response []byte
+func TestServeWritesMultipleHandlerResponses(t *testing.T) {
+	request := []byte(`{"jsonrpc":"2.0","method":"textDocument/didOpen","params":{}}`)
+	input := bytes.NewBufferString("Content-Length: " + strconv.Itoa(len(request)) + "\r\n\r\n" + string(request))
+	var output bytes.Buffer
+	err := serve(input, &output, staticHandler{responses: [][]byte{
+		[]byte(`{"jsonrpc":"2.0","method":"one"}`),
+		[]byte(`{"jsonrpc":"2.0","method":"two"}`),
+	}})
+	if err == nil {
+		t.Fatal("serve returned nil, want EOF after one message")
+	}
+	want := "Content-Length: 32\r\n\r\n{\"jsonrpc\":\"2.0\",\"method\":\"one\"}" +
+		"Content-Length: 32\r\n\r\n{\"jsonrpc\":\"2.0\",\"method\":\"two\"}"
+	if output.String() != want {
+		t.Fatalf("output = %q, want %q", output.String(), want)
+	}
 }
 
-func (h staticHandler) Handle(json.RawMessage) ([]byte, bool) {
-	return h.response, true
+type staticHandler struct {
+	responses [][]byte
+}
+
+func (h staticHandler) Handle(json.RawMessage) [][]byte {
+	return h.responses
 }

@@ -16,6 +16,7 @@ It runs over stdio and is intended to be easy to use from Neovim.
 - Value completion for common enum-like directives
 - Hover documentation for known directives
 - Document symbols for sections and directives
+- Template insertion for empty `.service` files
 
 ## Install
 

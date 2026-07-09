@@ -11,10 +11,11 @@ import (
 )
 
 type Server struct {
-	catalog  *systemd.Catalog
-	logger   *log.Logger
-	docs     map[string]string
-	shutdown bool
+	catalog       *systemd.Catalog
+	logger        *log.Logger
+	docs          map[string]string
+	shutdown      bool
+	nextRequestID int
 }
 
 func NewServer(catalog *systemd.Catalog, logger *log.Logger) *Server {
@@ -39,34 +40,23 @@ type rpcError struct {
 	Message string `json:"message"`
 }
 
-func (s *Server) Handle(payload json.RawMessage) ([]byte, bool) {
+func (s *Server) Handle(payload json.RawMessage) [][]byte {
 	var msg rpcMessage
 	if err := json.Unmarshal(payload, &msg); err != nil {
-		return encodeResponse(nil, nil, &rpcError{Code: -32700, Message: err.Error()}), true
+		return [][]byte{encodeResponse(nil, nil, &rpcError{Code: -32700, Message: err.Error()})}
 	}
 	if msg.Method == "" {
-		return nil, false
+		return nil
 	}
 
 	result, notifications, err := s.dispatch(msg.Method, msg.Params)
-	for _, notification := range notifications {
-		// The stdio writer is outside Server, so notifications are returned as a
-		// synthetic batch by encoding one message at a time in Handle's caller path.
-		// For LSP requests we only need publishDiagnostics after document changes;
-		// those are emitted as responses to notifications by returning the first
-		// notification below when the inbound message has no ID.
-		_ = notification
-	}
 	if len(msg.ID) == 0 {
-		if len(notifications) == 0 {
-			return nil, false
-		}
-		return notifications[0], true
+		return notifications
 	}
 	if err != nil {
-		return encodeResponse(msg.ID, nil, &rpcError{Code: -32603, Message: err.Error()}), true
+		return [][]byte{encodeResponse(msg.ID, nil, &rpcError{Code: -32603, Message: err.Error()})}
 	}
-	return encodeResponse(msg.ID, result, nil), true
+	return [][]byte{encodeResponse(msg.ID, result, nil)}
 }
 
 func (s *Server) dispatch(method string, params json.RawMessage) (any, [][]byte, error) {
@@ -88,6 +78,9 @@ func (s *Server) dispatch(method string, params json.RawMessage) (any, [][]byte,
 			return nil, nil, err
 		}
 		s.docs[p.TextDocument.URI] = p.TextDocument.Text
+		if shouldInsertServiceTemplate(p.TextDocument.URI, p.TextDocument.Text) {
+			return nil, [][]byte{s.applyEditRequest(p.TextDocument.URI, defaultServiceTemplate)}, nil
+		}
 		return nil, s.publishDiagnostics(p.TextDocument.URI), nil
 	case "textDocument/didChange":
 		var p struct {
@@ -153,6 +146,53 @@ func (s *Server) dispatch(method string, params json.RawMessage) (any, [][]byte,
 		}
 		return nil, nil, nil
 	}
+}
+
+const defaultServiceTemplate = `[Unit]
+Description=New systemd service
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/true
+
+[Install]
+WantedBy=multi-user.target
+`
+
+func shouldInsertServiceTemplate(uri, text string) bool {
+	return unitTypeFromURI(uri) == "service" && strings.TrimSpace(text) == ""
+}
+
+func (s *Server) applyEditRequest(uri, newText string) []byte {
+	s.nextRequestID++
+	id := json.RawMessage(fmt.Sprintf("%d", s.nextRequestID))
+	params := map[string]any{
+		"label": "Insert systemd service template",
+		"edit": map[string]any{
+			"changes": map[string]any{
+				uri: []map[string]any{
+					{
+						"range": Range{
+							Start: Position{Line: 0, Character: 0},
+							End:   Position{Line: 0, Character: 0},
+						},
+						"newText": newText,
+					},
+				},
+			},
+		},
+	}
+	raw, err := json.Marshal(params)
+	if err != nil {
+		raw = json.RawMessage("null")
+	}
+	payload, _ := json.Marshal(rpcMessage{
+		JSONRPC: "2.0",
+		ID:      id,
+		Method:  "workspace/applyEdit",
+		Params:  raw,
+	})
+	return payload
 }
 
 func (s *Server) initialize() map[string]any {
