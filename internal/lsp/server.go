@@ -154,9 +154,11 @@ func (s *Server) dispatch(method string, params json.RawMessage) (any, [][]byte,
 func (s *Server) configure(params json.RawMessage) {
 	var p struct {
 		Locale                string `json:"locale,omitempty"`
+		CatalogPath           string `json:"catalogPath,omitempty"`
 		InitializationOptions struct {
-			Locale   string `json:"locale,omitempty"`
-			Language string `json:"language,omitempty"`
+			Locale      string `json:"locale,omitempty"`
+			Language    string `json:"language,omitempty"`
+			CatalogPath string `json:"catalogPath,omitempty"`
 		} `json:"initializationOptions,omitempty"`
 	}
 	if err := json.Unmarshal(params, &p); err != nil {
@@ -170,6 +172,25 @@ func (s *Server) configure(params json.RawMessage) {
 		locale = p.Locale
 	}
 	s.locale = systemd.NormalizeLocale(locale)
+
+	catalogPath := p.InitializationOptions.CatalogPath
+	if catalogPath == "" {
+		catalogPath = p.CatalogPath
+	}
+	if catalogPath == "" {
+		return
+	}
+	file, err := systemd.LoadCatalogFile(catalogPath)
+	if err != nil {
+		if s.logger != nil {
+			s.logger.Printf("failed to load generated catalog %q: %v", catalogPath, err)
+		}
+		return
+	}
+	s.catalog.MergeCatalogFile(file)
+	if s.logger != nil {
+		s.logger.Printf("loaded generated catalog %q with %d directives", catalogPath, len(file.Directives))
+	}
 }
 
 const defaultServiceTemplate = `[Unit]

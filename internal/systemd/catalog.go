@@ -5,6 +5,11 @@ import "sort"
 type Directive struct {
 	Name      string
 	Doc       string
+	Parser    string
+	ValueKind string
+	Syntax    string
+	Example   string
+	ManPage   string
 	Multiple  bool
 	UnitTypes []string
 	Values    []string
@@ -95,6 +100,28 @@ func (c *Catalog) ValuesFor(section, key string) []string {
 		return directive.Values
 	}
 	return nil
+}
+
+func (c *Catalog) MergeCatalogFile(file CatalogFile) {
+	for _, incoming := range file.Directives {
+		if incoming.Section == "" || incoming.Name == "" {
+			continue
+		}
+		if _, ok := c.sections[incoming.Section]; !ok {
+			c.sections[incoming.Section] = Section{
+				Name: incoming.Section,
+				Doc:  "systemd section loaded from generated catalog.",
+			}
+		}
+		if _, ok := c.directives[incoming.Section]; !ok {
+			c.directives[incoming.Section] = map[string]Directive{}
+		}
+		next := incoming.directive()
+		if existing, ok := c.directives[incoming.Section][incoming.Name]; ok {
+			next = mergeDirective(existing, next)
+		}
+		c.directives[incoming.Section][incoming.Name] = next
+	}
 }
 
 func contains(values []string, needle string) bool {
@@ -471,6 +498,21 @@ func combineDirectives(groups ...[]Directive) []Directive {
 func mergeDirective(existing, next Directive) Directive {
 	if existing.Doc == "" {
 		existing.Doc = next.Doc
+	}
+	if existing.Parser == "" {
+		existing.Parser = next.Parser
+	}
+	if existing.ValueKind == "" {
+		existing.ValueKind = next.ValueKind
+	}
+	if existing.Syntax == "" {
+		existing.Syntax = next.Syntax
+	}
+	if existing.Example == "" {
+		existing.Example = next.Example
+	}
+	if existing.ManPage == "" {
+		existing.ManPage = next.ManPage
 	}
 	if next.Multiple {
 		existing.Multiple = true

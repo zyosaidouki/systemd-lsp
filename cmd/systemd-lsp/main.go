@@ -17,7 +17,17 @@ import (
 
 func main() {
 	logger := log.New(os.Stderr, "systemd-lsp: ", log.LstdFlags)
-	server := lsp.NewServer(systemd.NewCatalog(), logger)
+	catalog := systemd.NewCatalog()
+	if path := os.Getenv("SYSTEMD_LSP_CATALOG"); path != "" {
+		file, err := systemd.LoadCatalogFile(path)
+		if err != nil {
+			logger.Printf("failed to load SYSTEMD_LSP_CATALOG=%q: %v", path, err)
+		} else {
+			catalog.MergeCatalogFile(file)
+			logger.Printf("loaded generated catalog %q with %d directives", path, len(file.Directives))
+		}
+	}
+	server := lsp.NewServer(catalog, logger)
 	if err := serve(os.Stdin, os.Stdout, server); err != nil && !errors.Is(err, io.EOF) {
 		logger.Printf("server stopped: %v", err)
 		os.Exit(1)

@@ -46,6 +46,9 @@ func Diagnostics(catalog *Catalog, text, unitType string) []Diagnostic {
 			section = entry.Section
 			sectionKnown = catalog.KnowsSection(section)
 			if !sectionKnown {
+				if isExtensionName(section) {
+					continue
+				}
 				diagnostics = append(diagnostics, diagnostic(entry, SeverityWarning, fmt.Sprintf("unknown systemd section [%s]", section)))
 				continue
 			}
@@ -58,6 +61,9 @@ func Diagnostics(catalog *Catalog, text, unitType string) []Diagnostic {
 				continue
 			}
 			if !sectionKnown {
+				continue
+			}
+			if isExtensionName(entry.Key) {
 				continue
 			}
 			directive, ok := catalog.Directive(section, entry.Key)
@@ -83,6 +89,10 @@ func Diagnostics(catalog *Catalog, text, unitType string) []Diagnostic {
 	}
 	diagnostics = append(diagnostics, serviceChecks.diagnostics()...)
 	return diagnostics
+}
+
+func isExtensionName(name string) bool {
+	return strings.HasPrefix(name, "X-")
 }
 
 type serviceChecks struct {

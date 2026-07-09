@@ -139,6 +139,21 @@ func TestDiagnosticsRejectsResourceControlInTimer(t *testing.T) {
 	}
 }
 
+func TestDiagnosticsIgnoresExtensionSectionsAndDirectives(t *testing.T) {
+	text := strings.Join([]string{
+		"[Unit]",
+		"X-Owner=platform",
+		"",
+		"[X-Company]",
+		"Anything=goes",
+		"",
+	}, "\n")
+	diagnostics := Diagnostics(NewCatalog(), text, "service")
+	if len(diagnostics) != 0 {
+		t.Fatalf("diagnostics = %#v, want none", diagnostics)
+	}
+}
+
 func TestDiagnosticsWarnsWhenForkingServiceOmitsPIDFile(t *testing.T) {
 	text := strings.Join([]string{
 		"[Service]",

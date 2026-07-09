@@ -2,6 +2,8 @@ package lsp
 
 import (
 	"encoding/json"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -170,6 +172,54 @@ func TestCompletionUsesJapaneseDocumentation(t *testing.T) {
 	}
 }
 
+func TestInitializeLoadsGeneratedCatalogPath(t *testing.T) {
+	catalogPath := filepath.Join(t.TempDir(), "catalog.json")
+	if err := os.WriteFile(catalogPath, []byte(`{
+  "version": "test",
+  "directives": [
+    {
+      "section": "Service",
+      "name": "RestartMode",
+      "parser": "config_parse_service_restart_mode",
+      "valueKind": "string",
+      "values": ["normal", "direct", "debug"]
+    }
+  ]
+}`), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	server := NewServer(systemd.NewCatalog(), nil)
+	init := []byte(`{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"initializationOptions":{"catalogPath":` + strconvQuote(catalogPath) + `}}}`)
+	if len(server.Handle(init)) != 1 {
+		t.Fatal("initialize returned no response")
+	}
+	open := []byte(`{"jsonrpc":"2.0","method":"textDocument/didOpen","params":{"textDocument":{"uri":"file:///tmp/demo.service","languageId":"systemd","version":1,"text":"[Service]\n"}}}`)
+	if len(server.Handle(open)) != 1 {
+		t.Fatal("didOpen did not publish diagnostics")
+	}
+	payload := []byte(`{"jsonrpc":"2.0","id":2,"method":"textDocument/completion","params":{"textDocument":{"uri":"file:///tmp/demo.service"},"position":{"line":1,"character":0}}}`)
+	responses := server.Handle(payload)
+	if len(responses) != 1 {
+		t.Fatal("Handle returned no response")
+	}
+	var msg rpcMessage
+	if err := json.Unmarshal(responses[0], &msg); err != nil {
+		t.Fatal(err)
+	}
+	var items []CompletionItem
+	if err := json.Unmarshal(msg.Result, &items); err != nil {
+		t.Fatal(err)
+	}
+	item, ok := completionByLabel(items, "RestartMode")
+	if !ok {
+		t.Fatalf("completion labels = %#v, missing RestartMode", items)
+	}
+	if !strings.Contains(item.Documentation, "RestartMode=normal|direct|debug") {
+		t.Fatalf("documentation = %q, missing generated value syntax", item.Documentation)
+	}
+}
+
 func TestHoverUsesJapaneseDocumentation(t *testing.T) {
 	server := NewServer(systemd.NewCatalog(), nil)
 	init := []byte(`{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"initializationOptions":{"locale":"ja"}}}`)
@@ -266,4 +316,9 @@ func completionByLabel(items []CompletionItem, label string) (CompletionItem, bo
 		}
 	}
 	return CompletionItem{}, false
+}
+
+func strconvQuote(value string) string {
+	b, _ := json.Marshal(value)
+	return string(b)
 }

@@ -51,6 +51,9 @@ func DirectiveDocumentationFor(section string, directive Directive, locale strin
 	doc := DirectiveDocFor(section, directive, locale)
 	syntax := directiveSyntax(directive)
 	example := directiveExample(directive)
+	if directive.ManPage != "" {
+		doc += "\n\nMan page: " + directive.ManPage
+	}
 	if locale == LocaleJapanese {
 		return markdownDoc("説明", doc, "文法", syntax, "例", example)
 	}
@@ -71,14 +74,22 @@ func sectionExample(section string) string {
 }
 
 func directiveSyntax(directive Directive) string {
+	if directive.Syntax != "" {
+		return directive.Syntax
+	}
 	value := "<value>"
 	if len(directive.Values) > 0 {
 		value = strings.Join(directive.Values, "|")
+	} else if directive.ValueKind != "" {
+		value = "<" + directive.ValueKind + ">"
 	}
 	return directive.Name + "=" + value
 }
 
 func directiveExample(directive Directive) string {
+	if directive.Example != "" {
+		return directive.Example
+	}
 	if example, ok := directiveExamples[directive.Name]; ok {
 		return example
 	}
