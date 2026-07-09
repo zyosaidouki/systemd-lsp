@@ -40,6 +40,7 @@ func NewCatalog() *Catalog {
 			c.directives[section][directive.Name] = directive
 		}
 	}
+	mergeEmbeddedCatalog(c)
 	return c
 }
 

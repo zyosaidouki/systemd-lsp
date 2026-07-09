@@ -88,6 +88,9 @@ func TestCompletionReturnsServiceDirectives(t *testing.T) {
 	if !hasCompletion(items, "CPUAffinity") {
 		t.Fatalf("completion labels = %#v, missing CPUAffinity", items)
 	}
+	if !hasCompletion(items, "RestartMode") {
+		t.Fatalf("completion labels = %#v, missing generated RestartMode", items)
+	}
 	item, ok := completionByLabel(items, "ExecStart")
 	if !ok {
 		t.Fatal("missing ExecStart completion")
@@ -165,7 +168,7 @@ func TestCompletionUsesJapaneseDocumentation(t *testing.T) {
 		"**説明**",
 		"サービス起動時に実行するコマンドを指定します。",
 		"**文法**",
-		"ExecStart=<value>",
+		"ExecStart=<command>",
 		"**例**",
 		"ExecStart=/usr/bin/example --foreground",
 	} {
@@ -248,7 +251,7 @@ func TestHoverUsesJapaneseDocumentation(t *testing.T) {
 	}
 	for _, want := range []string{
 		"サービス起動時に実行するコマンドを指定します。",
-		"ExecStart=<value>",
+		"ExecStart=<command>",
 		"ExecStart=/usr/bin/example --foreground",
 	} {
 		if !strings.Contains(hover.Contents.Value, want) {

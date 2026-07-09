@@ -3,7 +3,6 @@ package systemd
 import (
 	"bufio"
 	"encoding/json"
-	"fmt"
 	"io"
 	"os"
 	"regexp"
@@ -90,13 +89,9 @@ func ParseLoadFragmentGperf(r io.Reader) (CatalogFile, error) {
 }
 
 func (d CatalogDirective) directive() Directive {
-	doc := d.Doc
-	if doc == "" {
-		doc = generatedDirectiveDoc(d)
-	}
 	return Directive{
 		Name:      d.Name,
-		Doc:       doc,
+		Doc:       d.Doc,
 		Parser:    d.Parser,
 		ValueKind: d.ValueKind,
 		Syntax:    d.Syntax,
@@ -105,13 +100,6 @@ func (d CatalogDirective) directive() Directive {
 		Multiple:  d.Multiple,
 		Values:    d.Values,
 	}
-}
-
-func generatedDirectiveDoc(d CatalogDirective) string {
-	if d.ValueKind == "" {
-		return "systemd directive loaded from generated catalog."
-	}
-	return fmt.Sprintf("systemd directive loaded from generated catalog. Value kind: %s.", d.ValueKind)
 }
 
 type gperfMacro struct {

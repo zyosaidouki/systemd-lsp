@@ -88,3 +88,20 @@ func TestExecContextDirectivesIncludeCPUAffinity(t *testing.T) {
 		}
 	}
 }
+
+func TestCatalogIncludesEmbeddedGeneratedDirectives(t *testing.T) {
+	catalog := NewCatalog()
+	directives := catalog.DirectivesFor("Service")
+	if len(directives) < 200 {
+		t.Fatalf("[Service] directive count = %d, want generated catalog coverage", len(directives))
+	}
+	for _, name := range []string{"RestartMode", "MemoryZSwapMax", "ManagedOOMMemoryPressureDurationSec"} {
+		directive, ok := catalog.Directive("Service", name)
+		if !ok {
+			t.Fatalf("[Service] missing embedded generated directive %s", name)
+		}
+		if directive.Parser == "" {
+			t.Fatalf("[Service] %s missing parser metadata", name)
+		}
+	}
+}

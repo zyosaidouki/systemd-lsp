@@ -13,7 +13,8 @@ It runs over stdio and is intended to be easy to use from Neovim.
   - unknown directives in known sections
   - duplicate singleton directives
 - Completion for common sections and directives, including syntax and examples
-- Optional generated directive catalog from systemd's parser source and man XML
+- Embedded generated directive catalog from systemd's parser source
+- Optional external catalog with man XML documentation for a specific systemd version
 - Value completion for common enum-like directives
 - Hover documentation for known directives
 - Document symbols for sections and directives
@@ -87,6 +88,9 @@ vim.api.nvim_create_autocmd("FileType", {
 })
 ```
 
+The language server already includes a generated parser catalog for broad
+default completion. Use `catalogPath` when you want to replace or enrich it
+with catalog data generated from a specific systemd version and its man XML.
 You can also set `SYSTEMD_LSP_CATALOG=/path/to/catalog.json` before starting
 the language server.
 
@@ -122,8 +126,9 @@ go run ./cmd/systemd-lsp
 ## Generated catalog
 
 systemd adds and removes unit directives between releases. For better coverage,
-generate a catalog from the target systemd source tag instead of relying only on
-the built-in hand-written catalog.
+the language server embeds a generated parser catalog by default. To pin
+completion and hover documentation to a specific systemd release, generate a
+catalog from the target systemd source tag.
 
 The generated catalog uses:
 

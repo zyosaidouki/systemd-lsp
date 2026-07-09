@@ -38,7 +38,13 @@ func (c *Catalog) SectionDocumentationFor(section, locale string) string {
 
 func DirectiveDocFor(section string, directive Directive, locale string) string {
 	if NormalizeLocale(locale) != LocaleJapanese {
-		return directive.Doc
+		if directive.Doc != "" {
+			return directive.Doc
+		}
+		if directive.ValueKind != "" {
+			return "systemd directive for the [" + section + "] section. Value kind: " + directive.ValueKind + "."
+		}
+		return "systemd directive for the [" + section + "] section."
 	}
 	if doc, ok := japaneseDirectiveDocs[directive.Name]; ok {
 		return doc
