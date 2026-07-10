@@ -2,7 +2,8 @@
 
 A small Language Server Protocol implementation for systemd unit files.
 
-It runs over stdio and is intended to be easy to use from Neovim.
+It runs over stdio and can be used from Neovim, Vim, gVim, or another LSP
+client.
 
 ## Features
 
@@ -22,8 +23,12 @@ It runs over stdio and is intended to be easy to use from Neovim.
 
 ## System requirements
 
-- An editor or client that can start an LSP server over standard input and
-  standard output. The configuration below requires Neovim 0.11 or newer.
+- Neovim 0.11 or newer can use its built-in LSP client.
+- Vim or gVim 8.0 or newer requires an LSP client plugin. The included
+  integration uses `prabirshrestha/vim-lsp` and requires Vim features `+job`,
+  `+channel`, timers, lambdas, and JSON support.
+- Other editors need an LSP client that can start a server over standard input
+  and standard output.
 - Linux is the primary target because systemd unit files are normally used on
   Linux. The language server itself is written in pure Go and does not invoke
   `systemd`, `systemctl`, or `systemd-analyze` at runtime.
@@ -41,6 +46,12 @@ Installing with `go install` requires:
 - The Go binary installation directory in `PATH`. This is `GOBIN` when set,
   otherwise it is usually `$(go env GOPATH)/bin`.
 
+An operating-system package manager such as `apt`, `dnf`, or `pacman` is not
+required by `systemd-lsp`. Go may be installed using a package manager or the
+official Go archive. A Vim plugin manager is also optional. Vim/gVim does
+require an LSP client plugin, but it can be installed with Vim's built-in
+package support as shown below.
+
 Generating an optional catalog for a specific systemd version additionally
 requires a checkout of that systemd source tree. `git` and `curl` are used by
 the examples in this README, but neither is a runtime dependency of the
@@ -52,8 +63,8 @@ language server.
 go install github.com/zyosaidouki/systemd-lsp/cmd/systemd-lsp@latest
 ```
 
-If the command installs successfully but Neovim cannot find `systemd-lsp`, add
-the Go binary installation directory to `PATH`, for example:
+If the command installs successfully but your editor cannot find
+`systemd-lsp`, add the Go binary installation directory to `PATH`, for example:
 
 ```sh
 export PATH="$(go env GOPATH)/bin:$PATH"
@@ -144,9 +155,90 @@ vim.filetype.add({
     scope = "systemd",
   },
   pattern = {
-    [".*/systemd/.+%.d/.+%.conf"] = "systemd",
+    [".*/.+%.service%.d/.+%.conf"] = "systemd",
+    [".*/.+%.socket%.d/.+%.conf"] = "systemd",
+    [".*/.+%.timer%.d/.+%.conf"] = "systemd",
+    [".*/.+%.path%.d/.+%.conf"] = "systemd",
+    [".*/.+%.mount%.d/.+%.conf"] = "systemd",
+    [".*/.+%.automount%.d/.+%.conf"] = "systemd",
+    [".*/.+%.swap%.d/.+%.conf"] = "systemd",
+    [".*/.+%.target%.d/.+%.conf"] = "systemd",
+    [".*/.+%.slice%.d/.+%.conf"] = "systemd",
+    [".*/.+%.scope%.d/.+%.conf"] = "systemd",
   },
 })
+```
+
+## Vim and gVim
+
+Vim and gVim use the same Vimscript configuration. This repository includes
+filetype detection and automatic registration for
+[`prabirshrestha/vim-lsp`](https://github.com/prabirshrestha/vim-lsp).
+
+Check that Vim has the features needed by `vim-lsp`:
+
+```vim
+:echo has('job') && has('channel') && has('timers') && has('lambda') && exists('*json_encode')
+```
+
+The result must be `1`.
+
+### With a plugin manager
+
+A plugin manager is optional. For example, with `vim-plug`:
+
+```vim
+call plug#begin()
+Plug 'prabirshrestha/vim-lsp'
+Plug 'zyosaidouki/systemd-lsp', { 'do': 'go install ./cmd/systemd-lsp' }
+call plug#end()
+```
+
+Run `:PlugInstall`, then restart Vim or gVim.
+
+### Without a plugin manager
+
+Vim's built-in package support can load both repositories directly:
+
+```sh
+go install github.com/zyosaidouki/systemd-lsp/cmd/systemd-lsp@latest
+
+mkdir -p ~/.vim/pack/lsp/start
+git clone --depth 1 https://github.com/prabirshrestha/vim-lsp \
+  ~/.vim/pack/lsp/start/vim-lsp
+git clone --depth 1 https://github.com/zyosaidouki/systemd-lsp \
+  ~/.vim/pack/lsp/start/systemd-lsp
+```
+
+No separate package manager is used by this method. The `git` commands may be
+replaced by downloading and extracting the two repositories into the same
+directories.
+
+### Configuration
+
+Add this to `~/.vimrc` to enable filetype plugins and select Japanese
+documentation:
+
+```vim
+filetype plugin on
+let g:systemd_lsp_locale = 'ja'
+```
+
+Use `en` instead of `ja` for English documentation. Completion is available
+through Vim's standard omni-completion with `Ctrl-X Ctrl-O`. Hover and document
+symbols are available through `:LspHover` and `:LspDocumentSymbol`.
+
+When gVim is started from a desktop menu, it may not inherit the shell's
+`PATH`. In that case, set the executable explicitly before the plugins load:
+
+```vim
+let g:systemd_lsp_command = expand('~/go/bin/systemd-lsp')
+```
+
+An external catalog can also be selected in `.vimrc`:
+
+```vim
+let g:systemd_lsp_catalog_path = '/path/to/systemd-v258-catalog.json'
 ```
 
 ## Development

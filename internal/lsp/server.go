@@ -11,12 +11,13 @@ import (
 )
 
 type Server struct {
-	catalog       *systemd.Catalog
-	logger        *log.Logger
-	docs          map[string]string
-	shutdown      bool
-	nextRequestID int
-	locale        string
+	catalog        *systemd.Catalog
+	logger         *log.Logger
+	docs           map[string]string
+	shutdown       bool
+	nextRequestID  int
+	locale         string
+	snippetSupport bool
 }
 
 func NewServer(catalog *systemd.Catalog, logger *log.Logger) *Server {
@@ -153,8 +154,17 @@ func (s *Server) dispatch(method string, params json.RawMessage) (any, [][]byte,
 
 func (s *Server) configure(params json.RawMessage) {
 	var p struct {
-		Locale                string `json:"locale,omitempty"`
-		CatalogPath           string `json:"catalogPath,omitempty"`
+		Locale       string `json:"locale,omitempty"`
+		CatalogPath  string `json:"catalogPath,omitempty"`
+		Capabilities struct {
+			TextDocument struct {
+				Completion struct {
+					CompletionItem struct {
+						SnippetSupport bool `json:"snippetSupport,omitempty"`
+					} `json:"completionItem,omitempty"`
+				} `json:"completion,omitempty"`
+			} `json:"textDocument,omitempty"`
+		} `json:"capabilities,omitempty"`
 		InitializationOptions struct {
 			Locale      string `json:"locale,omitempty"`
 			Language    string `json:"language,omitempty"`
@@ -164,6 +174,7 @@ func (s *Server) configure(params json.RawMessage) {
 	if err := json.Unmarshal(params, &p); err != nil {
 		return
 	}
+	s.snippetSupport = p.Capabilities.TextDocument.Completion.CompletionItem.SnippetSupport
 	locale := p.InitializationOptions.Locale
 	if locale == "" {
 		locale = p.InitializationOptions.Language
@@ -287,13 +298,18 @@ func (s *Server) completion(p TextDocumentPositionParams) any {
 	if strings.HasPrefix(trimmed, "[") {
 		items := make([]CompletionItem, 0, len(s.catalog.SectionsFor(unitType)))
 		for _, section := range s.catalog.SectionsFor(unitType) {
+			insertText, insertTextFormat := s.completionInsertText("[" + section + "]")
+			kind := CompletionItemKindKeyword
+			if s.snippetSupport {
+				kind = CompletionItemKindSnippet
+			}
 			items = append(items, CompletionItem{
 				Label:            "[" + section + "]",
-				Kind:             CompletionItemKindSnippet,
+				Kind:             kind,
 				Detail:           s.localizedSectionDetail(),
 				Documentation:    s.catalog.SectionDocumentationFor(section, s.locale),
-				InsertText:       "[" + section + "]$0",
-				InsertTextFormat: InsertTextFormatSnippet,
+				InsertText:       insertText,
+				InsertTextFormat: insertTextFormat,
 			})
 		}
 		return items
@@ -311,16 +327,24 @@ func (s *Server) completion(p TextDocumentPositionParams) any {
 	directives := s.catalog.DirectivesFor(section)
 	items := make([]CompletionItem, 0, len(directives))
 	for _, directive := range directives {
+		insertText, insertTextFormat := s.completionInsertText(directive.Name + "=")
 		items = append(items, CompletionItem{
 			Label:            directive.Name,
 			Kind:             CompletionItemKindField,
 			Detail:           s.localizedDirectiveDetail(section),
 			Documentation:    systemd.DirectiveDocumentationFor(section, directive, s.locale),
-			InsertText:       directive.Name + "=$0",
-			InsertTextFormat: InsertTextFormatSnippet,
+			InsertText:       insertText,
+			InsertTextFormat: insertTextFormat,
 		})
 	}
 	return items
+}
+
+func (s *Server) completionInsertText(text string) (string, int) {
+	if s.snippetSupport {
+		return text + "$0", InsertTextFormatSnippet
+	}
+	return text, InsertTextFormatPlainText
 }
 
 func (s *Server) valueCompletions(section, key, prefix string) []CompletionItem {

@@ -62,6 +62,7 @@ func TestDidOpenPublishesDiagnostics(t *testing.T) {
 
 func TestCompletionReturnsServiceDirectives(t *testing.T) {
 	server := NewServer(systemd.NewCatalog(), nil)
+	initializeWithSnippetSupport(t, server)
 	open := []byte(`{"jsonrpc":"2.0","method":"textDocument/didOpen","params":{"textDocument":{"uri":"file:///tmp/demo.service","languageId":"systemd","version":1,"text":"[Service]\n"}}}`)
 	if len(server.Handle(open)) != 1 {
 		t.Fatal("didOpen did not publish diagnostics")
@@ -105,6 +106,7 @@ func TestCompletionReturnsServiceDirectives(t *testing.T) {
 
 func TestCompletionReturnsSectionSnippets(t *testing.T) {
 	server := NewServer(systemd.NewCatalog(), nil)
+	initializeWithSnippetSupport(t, server)
 	open := []byte(`{"jsonrpc":"2.0","method":"textDocument/didOpen","params":{"textDocument":{"uri":"file:///tmp/demo.service","languageId":"systemd","version":1,"text":"["}}}`)
 	if len(server.Handle(open)) != 1 {
 		t.Fatal("didOpen did not publish diagnostics")
@@ -131,6 +133,61 @@ func TestCompletionReturnsSectionSnippets(t *testing.T) {
 	}
 	if item.InsertTextFormat != InsertTextFormatSnippet {
 		t.Fatalf("[Service] insertTextFormat = %d, want snippet", item.InsertTextFormat)
+	}
+}
+
+func TestCompletionUsesPlainTextWithoutSnippetSupport(t *testing.T) {
+	server := NewServer(systemd.NewCatalog(), nil)
+	init := []byte(`{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"capabilities":{}}}`)
+	if len(server.Handle(init)) != 1 {
+		t.Fatal("initialize returned no response")
+	}
+	open := []byte(`{"jsonrpc":"2.0","method":"textDocument/didOpen","params":{"textDocument":{"uri":"file:///tmp/demo.service","languageId":"systemd","version":1,"text":"["}}}`)
+	server.Handle(open)
+	sectionPayload := []byte(`{"jsonrpc":"2.0","id":2,"method":"textDocument/completion","params":{"textDocument":{"uri":"file:///tmp/demo.service"},"position":{"line":0,"character":1}}}`)
+	responses := server.Handle(sectionPayload)
+
+	var msg rpcMessage
+	if err := json.Unmarshal(responses[0], &msg); err != nil {
+		t.Fatal(err)
+	}
+	var items []CompletionItem
+	if err := json.Unmarshal(msg.Result, &items); err != nil {
+		t.Fatal(err)
+	}
+	sectionItem, ok := completionByLabel(items, "[Service]")
+	if !ok {
+		t.Fatal("missing [Service] completion")
+	}
+	if sectionItem.InsertText != "[Service]" {
+		t.Fatalf("[Service] insertText = %q, want plain text", sectionItem.InsertText)
+	}
+	if sectionItem.InsertTextFormat != InsertTextFormatPlainText {
+		t.Fatalf("[Service] insertTextFormat = %d, want plain text", sectionItem.InsertTextFormat)
+	}
+
+	change := []byte(`{"jsonrpc":"2.0","method":"textDocument/didChange","params":{"textDocument":{"uri":"file:///tmp/demo.service","version":2},"contentChanges":[{"text":"[Service]\n"}]}}`)
+	server.Handle(change)
+	payload := []byte(`{"jsonrpc":"2.0","id":2,"method":"textDocument/completion","params":{"textDocument":{"uri":"file:///tmp/demo.service"},"position":{"line":1,"character":0}}}`)
+	responses = server.Handle(payload)
+
+	msg = rpcMessage{}
+	if err := json.Unmarshal(responses[0], &msg); err != nil {
+		t.Fatal(err)
+	}
+	items = nil
+	if err := json.Unmarshal(msg.Result, &items); err != nil {
+		t.Fatal(err)
+	}
+	item, ok := completionByLabel(items, "ExecStart")
+	if !ok {
+		t.Fatal("missing ExecStart completion")
+	}
+	if item.InsertText != "ExecStart=" {
+		t.Fatalf("ExecStart insertText = %q, want plain text", item.InsertText)
+	}
+	if item.InsertTextFormat != InsertTextFormatPlainText {
+		t.Fatalf("ExecStart insertTextFormat = %d, want plain text", item.InsertTextFormat)
 	}
 }
 
@@ -329,4 +386,12 @@ func completionByLabel(items []CompletionItem, label string) (CompletionItem, bo
 func strconvQuote(value string) string {
 	b, _ := json.Marshal(value)
 	return string(b)
+}
+
+func initializeWithSnippetSupport(t *testing.T, server *Server) {
+	t.Helper()
+	payload := []byte(`{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"capabilities":{"textDocument":{"completion":{"completionItem":{"snippetSupport":true}}}}}}`)
+	if len(server.Handle(payload)) != 1 {
+		t.Fatal("initialize returned no response")
+	}
 }
