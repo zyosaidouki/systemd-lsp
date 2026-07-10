@@ -20,10 +20,43 @@ It runs over stdio and is intended to be easy to use from Neovim.
 - Document symbols for sections and directives
 - Template insertion for empty `.service` files
 
+## System requirements
+
+- An editor or client that can start an LSP server over standard input and
+  standard output. The configuration below requires Neovim 0.11 or newer.
+- Linux is the primary target because systemd unit files are normally used on
+  Linux. The language server itself is written in pure Go and does not invoke
+  `systemd`, `systemctl`, or `systemd-analyze` at runtime.
+- A local systemd installation, systemd source tree, man pages, C compiler, and
+  systemd development headers are not required. The default directive catalog
+  is embedded in the executable.
+
+## Installation requirements
+
+Installing with `go install` requires:
+
+- Go 1.22 or newer
+- Network access to download the module from GitHub or a configured Go module
+  proxy
+- The Go binary installation directory in `PATH`. This is `GOBIN` when set,
+  otherwise it is usually `$(go env GOPATH)/bin`.
+
+Generating an optional catalog for a specific systemd version additionally
+requires a checkout of that systemd source tree. `git` and `curl` are used by
+the examples in this README, but neither is a runtime dependency of the
+language server.
+
 ## Install
 
 ```sh
 go install github.com/zyosaidouki/systemd-lsp/cmd/systemd-lsp@latest
+```
+
+If the command installs successfully but Neovim cannot find `systemd-lsp`, add
+the Go binary installation directory to `PATH`, for example:
+
+```sh
+export PATH="$(go env GOPATH)/bin:$PATH"
 ```
 
 For local development from this repository:
