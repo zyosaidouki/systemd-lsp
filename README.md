@@ -76,6 +76,82 @@ For local development from this repository:
 go install ./cmd/systemd-lsp
 ```
 
+## Setup
+
+Complete these steps after installing the `systemd-lsp` executable:
+
+1. Confirm that the executable is available in the current shell:
+
+   ```sh
+   command -v systemd-lsp
+   ```
+
+   The command must print the path to the executable. An editor started from a
+   desktop menu may use a different `PATH`; use an absolute executable path in
+   the editor configuration if necessary. Do not run `systemd-lsp` directly as
+   a health check; it communicates over standard input and output and waits for
+   an LSP client.
+
+2. Configure one editor integration:
+
+   - Use the [Neovim setup](#neovim) with Neovim's built-in LSP client.
+   - Use the [Vim and gVim setup](#vim-and-gvim) with `vim-lsp`.
+
+3. Restart the editor and open a systemd unit file such as
+   `example.service`.
+
+4. In the editor, check the detected filetype:
+
+   ```vim
+   :set filetype?
+   ```
+
+   The result must be `filetype=systemd`. If it is empty or different, add the
+   filetype configuration shown in the relevant editor section below.
+
+5. Confirm that the language server is running. In Neovim, run:
+
+   ```vim
+   :lua print(vim.inspect(vim.lsp.get_clients({ bufnr = 0 })))
+   ```
+
+   In Vim or gVim with `vim-lsp`, run:
+
+   ```vim
+   :LspStatus
+   ```
+
+   The output should include a running client named `systemd-lsp`. Opening a
+   new, empty `.service` file should then insert the default service template.
+
+### Supported file extensions
+
+The editor starts `systemd-lsp` when one of these extensions is detected as the
+`systemd` filetype:
+
+| Extension | Unit-specific section |
+| --- | --- |
+| `.service` | `[Service]` |
+| `.socket` | `[Socket]` |
+| `.timer` | `[Timer]` |
+| `.path` | `[Path]` |
+| `.mount` | `[Mount]` |
+| `.automount` | `[Automount]` |
+| `.swap` | `[Swap]` |
+| `.target` | No unit-specific section |
+| `.slice` | `[Slice]` |
+| `.scope` | `[Scope]` |
+
+Drop-in files are also supported when the parent directory identifies one of
+these unit types. For example, `example.service.d/override.conf` and
+`backup.timer.d/schedule.conf` activate the LSP. A general `.conf` file outside
+a supported unit drop-in directory does not activate it.
+
+Other systemd-related formats such as `.network`, `.netdev`, `.link`, and
+`.nspawn` are not unit files and are not handled by this language server.
+`.device` units are also not included in the current catalog or editor
+filetype rules.
+
 ## Neovim
 
 With Neovim 0.11 or newer:
