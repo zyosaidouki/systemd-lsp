@@ -353,6 +353,22 @@ func TestDidOpenEmptyServiceRequestsTemplateInsertion(t *testing.T) {
 	}
 }
 
+func TestDidOpenEmptyServiceDropInDoesNotRequestTemplateInsertion(t *testing.T) {
+	server := NewServer(systemd.NewCatalog(), nil)
+	payload := []byte(`{"jsonrpc":"2.0","method":"textDocument/didOpen","params":{"textDocument":{"uri":"file:///etc/systemd/system/demo.service.d/override.conf","languageId":"systemd","version":1,"text":""}}}`)
+	responses := server.Handle(payload)
+	if len(responses) != 1 {
+		t.Fatalf("response count = %d, want diagnostics notification", len(responses))
+	}
+	var msg rpcMessage
+	if err := json.Unmarshal(responses[0], &msg); err != nil {
+		t.Fatal(err)
+	}
+	if msg.Method != "textDocument/publishDiagnostics" {
+		t.Fatalf("method = %q, want publishDiagnostics", msg.Method)
+	}
+}
+
 func TestDidOpenEmptyTimerDoesNotRequestTemplateInsertion(t *testing.T) {
 	server := NewServer(systemd.NewCatalog(), nil)
 	payload := []byte(`{"jsonrpc":"2.0","method":"textDocument/didOpen","params":{"textDocument":{"uri":"file:///tmp/demo.timer","languageId":"systemd","version":1,"text":""}}}`)

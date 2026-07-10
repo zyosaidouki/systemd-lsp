@@ -19,7 +19,8 @@ client.
 - Value completion for common enum-like directives
 - Hover documentation for known directives
 - Document symbols for sections and directives
-- Template insertion for empty `.service` files
+- Template insertion for empty standalone `.service` files; drop-ins and other
+  unit types are never populated automatically
 
 ## System requirements
 
@@ -122,7 +123,9 @@ Complete these steps after installing the `systemd-lsp` executable:
    ```
 
    The output should include a running client named `systemd-lsp`. Opening a
-   new, empty `.service` file should then insert the default service template.
+   new, empty standalone `.service` file should then insert the default service
+   template. Files containing non-whitespace content, drop-ins, and other unit
+   types are left unchanged.
 
 ### Supported file extensions
 
@@ -145,7 +148,8 @@ The editor starts `systemd-lsp` when one of these extensions is detected as the
 Drop-in files are also supported when the parent directory identifies one of
 these unit types. For example, `example.service.d/override.conf` and
 `backup.timer.d/schedule.conf` activate the LSP. A general `.conf` file outside
-a supported unit drop-in directory does not activate it.
+a supported unit drop-in directory does not activate it. Drop-ins receive
+completion and diagnostics but are never populated with a template.
 
 Other systemd-related formats such as `.network`, `.netdev`, `.link`, and
 `.nspawn` are not unit files and are not handled by this language server.

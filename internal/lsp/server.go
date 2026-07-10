@@ -217,7 +217,7 @@ WantedBy=multi-user.target
 `
 
 func shouldInsertServiceTemplate(uri, text string) bool {
-	return unitTypeFromURI(uri) == "service" && strings.TrimSpace(text) == ""
+	return path.Ext(path.Base(uri)) == ".service" && strings.TrimSpace(text) == ""
 }
 
 func (s *Server) applyEditRequest(uri, newText string) []byte {
