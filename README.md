@@ -77,6 +77,31 @@ For local development from this repository:
 go install ./cmd/systemd-lsp
 ```
 
+### Apple Silicon (macOS arm64)
+
+To build the language server for Apple Silicon, including from Linux:
+
+```sh
+mkdir -p dist/darwin-arm64
+GOOS=darwin GOARCH=arm64 CGO_ENABLED=0 go build -trimpath \
+  -o dist/darwin-arm64/systemd-lsp ./cmd/systemd-lsp
+```
+
+The `CI` workflow also cross-compiles this binary on the Linux self-hosted
+runner. Download `systemd-lsp-darwin-arm64` from the workflow run's Artifacts
+section, unzip the download, and extract the included archive on your Mac:
+
+```sh
+tar -xzf systemd-lsp-darwin-arm64.tar.gz
+mkdir -p "$HOME/.local/bin"
+install -m 755 systemd-lsp "$HOME/.local/bin/systemd-lsp"
+```
+
+Add `$HOME/.local/bin` to your `PATH`, or configure your editor to use that
+absolute executable path. The archive preserves the executable permission.
+CI tests run on Linux; the macOS binary is cross-compiled, not tested on macOS
+by the workflow.
+
 ## Setup
 
 Complete these steps after installing the `systemd-lsp` executable:
@@ -322,6 +347,13 @@ let g:systemd_lsp_catalog_path = '/path/to/systemd-v258-catalog.json'
 ```
 
 ## Development
+
+GitHub Actions runs tests, `go vet`, and a build on the Linux x64 self-hosted
+runner for pushes to `main` and pull requests from this repository. Fork pull
+requests are skipped on the self-hosted runner. You can also start the `CI`
+workflow manually from the Actions tab. The runner must be online and have the
+`self-hosted`, `Linux`, and `X64` labels; Go is installed by the workflow using
+the version specified in `go.mod`.
 
 ```sh
 go test ./...

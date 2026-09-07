@@ -1,0 +1,59 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    # Only execute repository-owned code on the persistent runner.
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: [self-hosted, Linux, X64]
+    timeout-minutes: 15
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Set up Go
+        uses: actions/setup-go@v7
+        with:
+          go-version-file: go.mod
+          cache: false
+
+      - name: Test
+        run: go test ./...
+
+      - name: Vet
+        run: go vet ./...
+
+      - name: Build
+        run: go build ./...
+
+      - name: Build for Apple Silicon
+        env:
+          GOOS: darwin
+          GOARCH: arm64
+          CGO_ENABLED: '0'
+        run: |
+          mkdir -p dist/darwin-arm64
+          go build -trimpath -o dist/darwin-arm64/systemd-lsp ./cmd/systemd-lsp
+          tar -czf dist/systemd-lsp-darwin-arm64.tar.gz -C dist/darwin-arm64 systemd-lsp
+
+      - name: Upload Apple Silicon build
+        uses: actions/upload-artifact@v7
+        with:
+          name: systemd-lsp-darwin-arm64
+          path: dist/systemd-lsp-darwin-arm64.tar.gz
+          if-no-files-found: error
