@@ -1,5 +1,7 @@
 # systemd-lsp
 
+English | [日本語](README.ja.md)
+
 A small Language Server Protocol implementation for systemd unit files.
 
 It runs over stdio and can be used from Neovim, Vim, gVim, or another LSP
