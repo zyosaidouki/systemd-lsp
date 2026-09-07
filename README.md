@@ -47,7 +47,7 @@ It does not require Go or create a `~/go` directory. Update with
 
 Installing with `go install` requires:
 
-- Go 1.22 or newer
+- Go 1.26 or newer
 - Network access to download the module from GitHub or a configured Go module
   proxy
 - The Go binary installation directory in `PATH`. This is `GOBIN` when set,
