@@ -74,3 +74,62 @@ jobs:
           name: systemd-lsp-darwin-arm64
           path: dist/systemd-lsp-darwin-arm64.tar.gz
           if-no-files-found: error
+
+  release:
+    needs: test
+    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+    runs-on: [self-hosted, Linux, X64]
+    timeout-minutes: 10
+    permissions:
+      actions: read
+      contents: write
+    steps:
+      - name: Download tested builds
+        uses: actions/download-artifact@v8
+        with:
+          pattern: systemd-lsp-*
+          merge-multiple: true
+          path: ${{ runner.temp }}/release-${{ github.run_id }}-${{ github.run_attempt }}
+
+      - name: Publish release
+        uses: actions/github-script@v9
+        env:
+          RELEASE_DIR: ${{ runner.temp }}/release-${{ github.run_id }}-${{ github.run_attempt }}
+        with:
+          script: |
+            const fs = require('node:fs/promises');
+            const path = require('node:path');
+            const crypto = require('node:crypto');
+            const repo = context.repo;
+            const { data: main } = await github.rest.repos.getBranch({ ...repo, branch: 'main' });
+            if (main.commit.sha !== context.sha) {
+              core.notice('Skipping release because main has advanced past this build.');
+              return;
+            }
+            const names = ['systemd-lsp-linux-amd64.tar.gz', 'systemd-lsp-darwin-arm64.tar.gz'];
+            const assets = await Promise.all(names.map(async name => ({
+              name, data: await fs.readFile(path.join(process.env.RELEASE_DIR, name))
+            })));
+            const checksums = assets.map(({ name, data }) =>
+              `${crypto.createHash('sha256').update(data).digest('hex')}  ${name}\n`
+            ).join('');
+            assets.push({ name: 'SHA256SUMS', data: Buffer.from(checksums) });
+            const tag = `build-${context.runNumber}-${process.env.GITHUB_RUN_ATTEMPT}`;
+            const { data: release } = await github.rest.repos.createRelease({
+              ...repo,
+              tag_name: tag,
+              target_commitish: context.sha,
+              name: `Build ${context.runNumber} (${context.sha.slice(0, 7)})`,
+              body: `Automated main build after successful tests, vet, and builds.\n\nCommit: ${context.sha}\nCI: ${context.serverUrl}/${repo.owner}/${repo.repo}/actions/runs/${context.runId}\n\nIncludes Linux x86-64 and macOS Apple Silicon binaries and SHA256SUMS.`,
+              draft: true
+            });
+            for (const { name, data } of assets) {
+              await github.rest.repos.uploadReleaseAsset({
+                ...repo, release_id: release.id, name, data,
+                headers: { 'content-type': 'application/octet-stream', 'content-length': data.length }
+              });
+            }
+            const { data: published } = await github.rest.repos.updateRelease({
+              ...repo, release_id: release.id, draft: false, make_latest: 'true'
+            });
+            await core.summary.addLink('Download release', published.html_url).write();

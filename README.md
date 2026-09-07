@@ -80,10 +80,17 @@ go install ./cmd/systemd-lsp
 ### Linux x86-64
 
 The `CI` workflow builds both Linux x86-64 and Apple Silicon binaries in each
-run. For Linux, download `systemd-lsp-linux-amd64` from the workflow run's
-Artifacts section, unzip the download, and install the included binary:
+run. After CI succeeds on the current `main` commit, it automatically publishes
+both archives and `SHA256SUMS` to [GitHub Releases](https://github.com/zyosaidouki/systemd-lsp/releases/latest).
+Each release uses a `build-<run number>-<attempt>` tag pointing to the tested
+commit. Pull requests do not publish releases. Archives also remain available
+in the workflow run's Artifacts section.
+
+Download and install the latest Linux build without GitHub authentication:
 
 ```sh
+curl -fL --retry 3 -o systemd-lsp-linux-amd64.tar.gz \
+  https://github.com/zyosaidouki/systemd-lsp/releases/latest/download/systemd-lsp-linux-amd64.tar.gz
 tar -xzf systemd-lsp-linux-amd64.tar.gz
 mkdir -p "$HOME/.local/bin"
 install -m 755 systemd-lsp "$HOME/.local/bin/systemd-lsp"
@@ -109,10 +116,11 @@ GOOS=darwin GOARCH=arm64 CGO_ENABLED=0 go build -trimpath \
 ```
 
 The `CI` workflow also cross-compiles this binary on the Linux self-hosted
-runner. Download `systemd-lsp-darwin-arm64` from the workflow run's Artifacts
-section, unzip the download, and extract the included archive on your Mac:
+runner. Download and install the latest release on your Mac:
 
 ```sh
+curl -fL --retry 3 -o systemd-lsp-darwin-arm64.tar.gz \
+  https://github.com/zyosaidouki/systemd-lsp/releases/latest/download/systemd-lsp-darwin-arm64.tar.gz
 tar -xzf systemd-lsp-darwin-arm64.tar.gz
 mkdir -p "$HOME/.local/bin"
 install -m 755 systemd-lsp "$HOME/.local/bin/systemd-lsp"
@@ -122,6 +130,13 @@ Add `$HOME/.local/bin` to your `PATH`, or configure your editor to use that
 absolute executable path. The archive preserves the executable permission.
 CI tests run on Linux; the macOS binary is cross-compiled, not tested on macOS
 by the workflow.
+
+To update, repeat the download and installation commands for your platform,
+then restart your editor's LSP client. Install to the executable path your
+editor actually uses if it differs from `$HOME/.local/bin/systemd-lsp`.
+For checksum verification, download `SHA256SUMS` and the archive from the same
+tagged release, then use `sha256sum --ignore-missing -c SHA256SUMS` on Linux or
+compare `shasum -a 256` output on macOS.
 
 ## Setup
 
