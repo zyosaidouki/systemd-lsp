@@ -2,9 +2,249 @@
 
 [English](README.md) | 日本語
 
-systemd のユニットファイル向けの小さな Language Server Protocol（LSP）実装です。
+systemd ユニットファイルの補完・診断・ホバー表示を提供する Vim／Neovim 用プラグインです。
 
-標準入出力で通信し、Neovim、Vim、gVim、その他の LSP クライアントから利用できます。
+[Linux x86-64 のセットアップ](#linux) | [macOS Apple Silicon のセットアップ](#macos)
+
+<a id="linux"></a>
+
+## Linux x86-64 のセットアップ
+
+### 1. 使用するエディタとコマンドを確認する
+
+- Neovim：0.11 以降
+- Vim／gVim：8.0 以降（`+job`、`+channel`、タイマー、ラムダ式、JSON 対応）
+
+ターミナルで次を実行します。
+
+```sh
+uname -m
+command -v git curl tar sh sha256sum
+```
+
+`uname -m` が `x86_64` で、各コマンドのパスが表示されることを確認してください。
+不足しているコマンドは、お使いの OS のパッケージ管理方法でインストールします。初回起動時は GitHub への接続が必要です。
+
+### 2. エディタにプラグインを追加する
+
+使用するエディタの手順を実行してください。すでに lazy.nvim または vim-plug を使っている場合は、
+[プラグインマネージャーでの設定](#plugin-managers)を使い、この手順のクローン操作は省略します。
+
+#### Neovim
+
+ターミナルで実行します。
+
+```sh
+mkdir -p ~/.config/nvim/pack/lsp/start
+git clone https://github.com/zyosaidouki/systemd-lsp \
+  ~/.config/nvim/pack/lsp/start/systemd-lsp
+```
+
+`~/.config/nvim/init.lua` に次を追記します（ファイルがなければ作成します）。
+
+```lua
+vim.g.systemd_lsp_locale = "ja"
+```
+
+#### Vim／gVim
+
+ターミナルで本体と LSP クライアントをインストールします。
+
+```sh
+mkdir -p ~/.vim/pack/lsp/start
+git clone https://github.com/prabirshrestha/vim-lsp \
+  ~/.vim/pack/lsp/start/vim-lsp
+git clone https://github.com/zyosaidouki/systemd-lsp \
+  ~/.vim/pack/lsp/start/systemd-lsp
+```
+
+`~/.vimrc` に次を追記します（ファイルがなければ作成します）。
+
+```vim
+filetype plugin on
+let g:systemd_lsp_locale = 'ja'
+```
+
+### 3. 起動して動作を確認する
+
+エディタを再起動し、エディタ内で次を実行します。
+
+```vim
+:edit example.service
+```
+
+初回は実行ファイルを自動ダウンロードします。完了したら次を実行してください。
+
+```vim
+:set filetype?
+```
+
+`filetype=systemd` と表示されることを確認します。Neovim では次で LSP 接続を確認できます。
+
+```vim
+:lua print(vim.lsp.get_clients({ name = "systemd-lsp" }))
+```
+
+クライアントが表示されれば接続できています。Vim／gVim では `:LspStatus` を実行し、
+`systemd-lsp` が `running` であることを確認します。
+
+<a id="macos"></a>
+
+## macOS Apple Silicon のセットアップ
+
+### 1. 使用するエディタとコマンドを確認する
+
+- Neovim：0.11 以降
+- Vim／gVim：8.0 以降（`+job`、`+channel`、タイマー、ラムダ式、JSON 対応）
+
+ターミナルで次を実行します。
+
+```sh
+uname -m
+command -v git curl tar sh shasum
+```
+
+`uname -m` が `arm64` で、各コマンドのパスが表示されることを確認してください。
+不足しているコマンドは、お使いの OS のパッケージ管理方法でインストールします。初回起動時は GitHub への接続が必要です。
+
+### 2. エディタにプラグインを追加する
+
+使用するエディタの手順を実行してください。すでに lazy.nvim または vim-plug を使っている場合は、
+[プラグインマネージャーでの設定](#plugin-managers)を使い、この手順のクローン操作は省略します。
+
+#### Neovim
+
+ターミナルで実行します。
+
+```sh
+mkdir -p ~/.config/nvim/pack/lsp/start
+git clone https://github.com/zyosaidouki/systemd-lsp \
+  ~/.config/nvim/pack/lsp/start/systemd-lsp
+```
+
+`~/.config/nvim/init.lua` に次を追記します（ファイルがなければ作成します）。
+
+```lua
+vim.g.systemd_lsp_locale = "ja"
+```
+
+#### Vim／gVim
+
+ターミナルで本体と LSP クライアントをインストールします。
+
+```sh
+mkdir -p ~/.vim/pack/lsp/start
+git clone https://github.com/prabirshrestha/vim-lsp \
+  ~/.vim/pack/lsp/start/vim-lsp
+git clone https://github.com/zyosaidouki/systemd-lsp \
+  ~/.vim/pack/lsp/start/systemd-lsp
+```
+
+`~/.vimrc` に次を追記します（ファイルがなければ作成します）。
+
+```vim
+filetype plugin on
+let g:systemd_lsp_locale = 'ja'
+```
+
+### 3. 起動して動作を確認する
+
+エディタを再起動し、エディタ内で次を実行します。
+
+```vim
+:edit example.service
+```
+
+初回は実行ファイルを自動ダウンロードします。完了したら次を実行してください。
+
+```vim
+:set filetype?
+```
+
+`filetype=systemd` と表示されることを確認します。Neovim では次で LSP 接続を確認できます。
+
+```vim
+:lua print(vim.lsp.get_clients({ name = "systemd-lsp" }))
+```
+
+クライアントが表示されれば接続できています。Vim／gVim では `:LspStatus` を実行し、
+`systemd-lsp` が `running` であることを確認します。
+
+<a id="plugin-managers"></a>
+
+## プラグインマネージャーを使う場合
+
+Linux・macOS 共通です。すでに導入済みのマネージャーに、次の設定を追加してください。
+
+### lazy.nvim
+
+`lua/plugins` を読み込む構成では、`~/.config/nvim/lua/plugins/systemd.lua` に保存します。
+それ以外は、既存のプラグイン一覧に内側のプラグイン定義を追加してください。
+
+```lua
+return {
+  {
+    "zyosaidouki/systemd-lsp",
+    lazy = false,
+    init = function()
+      vim.g.systemd_lsp_locale = "ja"
+    end,
+  },
+}
+```
+
+`:Lazy sync` を実行したら、上記の「3. 起動して動作を確認する」に進みます。
+
+### vim-plug
+
+`~/.vimrc` の既存の `plug#begin()` と `plug#end()` の間に、次の2行を追加します。
+
+```vim
+Plug 'prabirshrestha/vim-lsp'
+Plug 'zyosaidouki/systemd-lsp'
+```
+
+同じファイルに次の設定を追記します。
+
+```vim
+filetype plugin on
+let g:systemd_lsp_locale = 'ja'
+```
+
+`:PlugInstall` を実行したら、上記の「3. 起動して動作を確認する」に進みます。
+
+## 更新
+
+エディタ内で実行します。
+
+```vim
+:SystemdLspUpdate
+```
+
+最新版を取得し、LSP を再起動します。実行ファイルはプラグイン内の `bin/systemd-lsp` に保存されます。
+
+## うまく動かない場合
+
+- ダウンロードに失敗する：`:messages` で原因を確認し、`:SystemdLspUpdate` で再試行します。
+- LSP が二重に起動する：以前の `lsp/systemd.lua`、`vim.lsp.enable("systemd")`、独自の LSP 起動設定を削除します。
+- 以前のインストール方法から移行する：`go install` フック、固定のバイナリパス、独自の `SystemdLspUpdate` 定義を削除し、上記の設定に置き換えます。
+
+## 言語と外部カタログ
+
+上記の設定は日本語表示です。英語にする場合は `ja` を `en` に変更してください。
+外部カタログを使う場合は、プラグイン読み込み前に次を設定します。
+
+Neovim (`init.lua` または lazy.nvim の `init`):
+
+```lua
+vim.g.systemd_lsp_catalog_path = "/path/to/catalog.json"
+```
+
+Vim／gVim (`~/.vimrc`):
+
+```vim
+let g:systemd_lsp_catalog_path = '/path/to/catalog.json'
+```
 
 ## 機能
 
@@ -22,79 +262,7 @@ systemd のユニットファイル向けの小さな Language Server Protocol�
 - セクションとディレクティブのドキュメントシンボル
 - 空の単独 `.service` ファイルへのテンプレート挿入。ドロップインや他のユニット種別には自動挿入しません
 
-## 動作要件
-
-- Neovim 0.11 以降では、組み込みの LSP クライアントを使用します。
-- Vim／gVim 8.0 以降では、LSP クライアントプラグインが必要です。同梱の連携機能は
-  `prabirshrestha/vim-lsp` を使用し、Vim の `+job`、`+channel`、タイマー、ラムダ式、JSON サポートを必要とします。
-- その他のエディタでは、標準入出力でサーバーを起動できる LSP クライアントが必要です。
-- systemd ユニットファイルは通常 Linux で使われるため、主な対象は Linux です。
-  サーバー自体は Go のみで実装され、実行時に `systemd`、`systemctl`、`systemd-analyze` を呼び出しません。
-- ローカルへの systemd のインストール、systemd ソースツリー、man ページ、C コンパイラ、
-  systemd 開発用ヘッダーは不要です。標準のディレクティブカタログは実行ファイルに組み込まれています。
-
-## インストールと更新
-
-以下の [Neovim](#neovim) または [Vim／gVim](#vim-and-gvim) の手順でエディタプラグインをインストールしてください。
-初回読み込み時に、プラグインが GitHub Releases の最新版を非同期でダウンロードし、
-**プラグインのディレクトリ内にある `bin/systemd-lsp`** に保存して LSP クライアントを起動します。
-実行ファイルの個別インストール、PATH 設定、Go ツールチェーン、`~/go` ディレクトリは不要です。
-実行ファイルを `~/.local/bin` に配置することもありません。
-
-ビルド済みリリースは Linux x86-64 と macOS Apple Silicon（arm64）に対応しています。
-インストールには `sh`、`curl`、`tar`、`sha256sum` または `shasum`、GitHub へのネットワーク接続、
-プラグインディレクトリへの書き込み権限が必要です。GitHub へのサインインは不要です。
-実行ファイルを置き換える前にチェックサムを検証します。ダウンロードや検証に失敗した場合は、既存の実行ファイルを保持します。
-
-Vim／Neovim から更新するには、次のコマンドを実行します。
-
-```vim
-:SystemdLspUpdate
-```
-
-初回インストールに失敗した場合も、このコマンドで再試行できます。
-インストール・更新に成功すると、プラグインが LSP クライアントを起動または再起動します。
-実行ファイルのパスやシェルコマンドを入力する必要はありません。
-通常のエディタ起動時はインストール済みの実行ファイルを再利用し、更新確認は行いません。
-プラグインを削除すると、その管理下の実行ファイルも削除されます。
-プラグインマネージャーが Git の管理対象外である `bin/` を消去した場合は、次回読み込み時に再ダウンロードします。
-
-現在の `main` コミットでテストとビルドが成功すると、CI が Linux・Mac 用のアーカイブと `SHA256SUMS` を
-[GitHub Releases](https://github.com/zyosaidouki/systemd-lsp/releases/latest) に公開します。
-各リリースには `build-<実行番号>-<試行番号>` 形式のタグが付きます。プルリクエストではリリースを公開しません。
-
-### 既存の設定からの移行
-
-エディタ設定から、独自の `SystemdLspUpdate` コマンド定義、`go install` のビルドフック、
-固定の実行ファイルパスを削除してください。Neovim では、以前の `lsp/systemd.lua` と
-`vim.lsp.enable("systemd")` の呼び出しも削除します。
-現在はプラグイン自身が `systemd-lsp` クライアントを登録・有効化します。
-以下の最小限のプラグイン設定を使用してください。言語とカタログの設定は、記載のグローバル変数で引き継げます。
-
-プラグイン管理のクライアントが動作することを確認したら、以前の単独の実行ファイルは削除できます。
-プラグインが他のインストールを削除・変更したり、Go のグローバル設定を変更したりすることはありません。
-
-## セットアップの確認
-
-設定は各マシンで初回だけ必要です。プラグインをインストールしたら `.service` ファイルを開き、
-初回ダウンロードが完了するまで待ちます。次のコマンドでファイルタイプを確認してください。
-
-```vim
-:set filetype?
-```
-
-結果が `systemd` になれば、ファイルタイプの検出は成功です。Neovim では次のコマンドでクライアントを確認できます。
-
-```vim
-:lua print(vim.lsp.get_clients({ name = "systemd-lsp" }))
-```
-
-Vim／gVim では `:LspStatus` を使用します。
-新しい空の単独 `.service` ファイルを開くと、テンプレートが挿入されます。
-既存の内容があるファイルやドロップインには挿入しません。
-インストールに失敗した場合は `:messages` を確認し、`:SystemdLspUpdate` で再試行してください。
-
-### 対応する拡張子
+## 対応する拡張子
 
 次の拡張子が `systemd` ファイルタイプとして検出されると、エディタが `systemd-lsp` を起動します。
 
@@ -118,83 +286,6 @@ Vim／gVim では `:LspStatus` を使用します。
 
 `.network`、`.netdev`、`.link`、`.nspawn` など、ユニットファイルではない systemd 関連形式は対象外です。
 `.device` ユニットも、現在のカタログとエディタのファイルタイプ検出ルールには含まれていません。
-
-## Neovim
-
-Neovim 0.11 以降が必要です。lazy.nvim を使用する場合は、次のプラグイン設定を追加します。
-`lua/plugins` を読み込む構成では、`~/.config/nvim/lua/plugins/systemd.lua` として保存してください。
-
-```lua
-return {
-  {
-    "zyosaidouki/systemd-lsp",
-    lazy = false,
-    init = function()
-      vim.g.systemd_lsp_locale = "ja" -- 任意。既定は英語
-    end,
-  },
-}
-```
-
-`:Lazy sync` を実行して Neovim を再起動します。
-`build` フック、独自の更新コマンド、`lsp/systemd.lua`、`vim.lsp.enable` の呼び出しは不要です。
-プラグインがファイルタイプ検出と組み込み LSP クライアントを自動設定します。
-
-プラグインマネージャーを使わない場合は、Neovim 標準のパッケージディレクトリにクローンします。
-
-```sh
-git clone https://github.com/zyosaidouki/systemd-lsp \
-  ~/.config/nvim/pack/lsp/start/systemd-lsp
-```
-
-Neovim を再起動してください。言語や任意の外部ディレクティブカタログを指定するには、
-プラグイン読み込み前の `init.lua`、または lazy.nvim の `init` コールバックで設定します。
-
-```lua
-vim.g.systemd_lsp_locale = "ja" -- 英語にする場合は "en"
-vim.g.systemd_lsp_catalog_path = "/path/to/catalog.json" -- 任意
-```
-
-<a id="vim-and-gvim"></a>
-
-## Vim／gVim
-
-`+job`、`+channel`、タイマー、ラムダ式、JSON サポートを備えた Vim／gVim 8.0 以降と、
-LSP クライアントプラグイン `prabirshrestha/vim-lsp` が必要です。
-vim-plug を使用する場合は、次の設定を `~/.vimrc` に追加します。
-
-```vim
-filetype plugin on
-let g:systemd_lsp_locale = 'ja' " 任意。既定は英語
-call plug#begin()
-Plug 'prabirshrestha/vim-lsp'
-Plug 'zyosaidouki/systemd-lsp'
-call plug#end()
-```
-
-`:PlugInstall` を実行して Vim／gVim を再起動してください。
-プラグインが自身の管理下にある実行ファイルを使うため、`go install` フックや
-`g:systemd_lsp_command` の設定は追加しないでください。
-
-プラグインマネージャーを使わない場合は、両方を標準パッケージとしてインストールします。
-
-```sh
-mkdir -p ~/.vim/pack/lsp/start
-git clone https://github.com/prabirshrestha/vim-lsp \
-  ~/.vim/pack/lsp/start/vim-lsp
-git clone https://github.com/zyosaidouki/systemd-lsp \
-  ~/.vim/pack/lsp/start/systemd-lsp
-```
-
-`~/.vimrc` に `filetype plugin on` を追加して再起動します。
-どちらのインストール方法でも `:SystemdLspUpdate` を使用できます。
-補完は `Ctrl-X Ctrl-O`、ホバーは `:LspHover`、シンボル一覧は `:LspDocumentSymbol` で利用できます。
-
-任意の外部カタログを指定する場合は、プラグイン読み込み前に次を設定してください。
-
-```vim
-let g:systemd_lsp_catalog_path = '/path/to/catalog.json'
-```
 
 ## 開発
 
