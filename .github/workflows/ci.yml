@@ -41,6 +41,23 @@ jobs:
       - name: Build
         run: go build ./...
 
+      - name: Build for Linux x86-64
+        env:
+          GOOS: linux
+          GOARCH: amd64
+          CGO_ENABLED: '0'
+        run: |
+          mkdir -p dist/linux-amd64
+          go build -trimpath -o dist/linux-amd64/systemd-lsp ./cmd/systemd-lsp
+          tar -czf dist/systemd-lsp-linux-amd64.tar.gz -C dist/linux-amd64 systemd-lsp
+
+      - name: Upload Linux x86-64 build
+        uses: actions/upload-artifact@v7
+        with:
+          name: systemd-lsp-linux-amd64
+          path: dist/systemd-lsp-linux-amd64.tar.gz
+          if-no-files-found: error
+
       - name: Build for Apple Silicon
         env:
           GOOS: darwin

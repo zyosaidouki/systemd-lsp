@@ -77,6 +77,27 @@ For local development from this repository:
 go install ./cmd/systemd-lsp
 ```
 
+### Linux x86-64
+
+The `CI` workflow builds both Linux x86-64 and Apple Silicon binaries in each
+run. For Linux, download `systemd-lsp-linux-amd64` from the workflow run's
+Artifacts section, unzip the download, and install the included binary:
+
+```sh
+tar -xzf systemd-lsp-linux-amd64.tar.gz
+mkdir -p "$HOME/.local/bin"
+install -m 755 systemd-lsp "$HOME/.local/bin/systemd-lsp"
+```
+
+Add `$HOME/.local/bin` to your `PATH`, or configure your editor to use that
+absolute executable path. To build locally (including from macOS):
+
+```sh
+mkdir -p dist/linux-amd64
+GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build -trimpath \
+  -o dist/linux-amd64/systemd-lsp ./cmd/systemd-lsp
+```
+
 ### Apple Silicon (macOS arm64)
 
 To build the language server for Apple Silicon, including from Linux:
