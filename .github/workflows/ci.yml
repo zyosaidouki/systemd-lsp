@@ -35,6 +35,9 @@ jobs:
       - name: Test
         run: go test ./...
 
+      - name: Test release installer
+        run: python3 -m unittest discover -s tests -v
+
       - name: Vet
         run: go vet ./...
 

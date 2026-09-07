@@ -37,197 +37,70 @@ client.
   systemd development headers are not required. The default directive catalog
   is embedded in the executable.
 
-## Installation requirements
+## Installation and updates
 
-The recommended installation uses the prebuilt [release binaries](#linux-x86-64).
-It does not require Go or create a `~/go` directory. Update with
-`systemd-lsp update` after installation.
+Install the editor plugin using the [Neovim](#neovim) or
+[Vim/gVim](#vim-and-gvim) instructions below. On first load, the plugin
+asynchronously downloads the latest GitHub Release into its own
+`bin/systemd-lsp` directory and starts the LSP client. There is no separate
+binary installation, PATH configuration, Go toolchain, or `~/go` directory.
+The executable is not installed in `~/.local/bin`.
 
-### Optional installation from source
+Prebuilt releases support Linux x86-64 and macOS Apple Silicon (arm64).
+Installation requires `sh`, `curl`, `tar`, and either `sha256sum` or `shasum`,
+network access to GitHub, and write access to the plugin directory. GitHub
+sign-in is not required. Checksums are verified before the executable is
+replaced. A failed download or verification leaves the existing binary intact.
 
-Installing with `go install` requires:
+To update from Vim or Neovim:
 
-- Go 1.26 or newer
-- Network access to download the module from GitHub or a configured Go module
-  proxy
-- The Go binary installation directory in `PATH`. This is `GOBIN` when set,
-  otherwise it is usually `$(go env GOPATH)/bin`.
-
-An operating-system package manager such as `apt`, `dnf`, or `pacman` is not
-required by `systemd-lsp`. Go may be installed using a package manager or the
-official Go archive. A Vim plugin manager is also optional. Vim/gVim does
-require an LSP client plugin, but it can be installed with Vim's built-in
-package support as shown below.
-
-Generating an optional catalog for a specific systemd version additionally
-requires a checkout of that systemd source tree. `git` and `curl` are used by
-the examples in this README, but neither is a runtime dependency of the
-language server.
-
-## Install from source (optional)
-
-```sh
-go install github.com/zyosaidouki/systemd-lsp/cmd/systemd-lsp@latest
+```vim
+:SystemdLspUpdate
 ```
 
-If the command installs successfully but your editor cannot find
-`systemd-lsp`, add the Go binary installation directory to `PATH`, for example:
+The same command also retries a failed first installation. After a successful
+installation or update, the plugin starts or restarts its LSP client. You do
+not need to type an executable path or shell command. Ordinary editor starts
+reuse the installed binary and do not check for updates. Removing the plugin
+also removes its managed executable; if a plugin manager cleans the ignored
+`bin/` directory, the next load downloads it again.
 
-```sh
-export PATH="$(go env GOPATH)/bin:$PATH"
+CI publishes Linux and Mac archives plus `SHA256SUMS` to
+[GitHub Releases](https://github.com/zyosaidouki/systemd-lsp/releases/latest)
+after tests and builds succeed on the current `main` commit. Each release has
+a `build-<run number>-<attempt>` tag. Pull requests do not publish releases.
+
+### Migrating an existing setup
+
+Remove custom `SystemdLspUpdate` command definitions, `go install` build hooks,
+and hard-coded binary paths from your editor configuration. For Neovim, also
+remove the old `lsp/systemd.lua` configuration and `vim.lsp.enable("systemd")`
+call; the plugin now registers and enables its own `systemd-lsp` client.
+Use the minimal plugin specification below. Existing locale and catalog
+preferences can be set using the documented global options.
+
+Old standalone binaries can be removed after confirming the managed client
+works. The plugin does not delete or modify other installations or change
+Go's global configuration.
+
+## Setup verification
+
+Configuration is needed only once per machine. After installing the plugin,
+open a `.service` file and wait for the first download to finish. Check:
+
+```vim
+:set filetype?
 ```
 
-For local development from this repository:
+The result should be `systemd`. In Neovim, inspect the managed client:
 
-```sh
-go install ./cmd/systemd-lsp
+```vim
+:lua print(vim.lsp.get_clients({ name = "systemd-lsp" }))
 ```
 
-## Install from Releases (recommended)
-
-Perform installation and editor configuration once per machine. Starting your
-editor or updating the server does not require repeating the setup. These
-instructions use `~/.local/bin/systemd-lsp` and do not require Go or create
-`~/go`.
-
-Choose the download commands for your platform below. To use `systemd-lsp`
-from a terminal, add this line once to `~/.zshrc` (zsh) or `~/.bashrc` (bash),
-then open a new terminal:
-
-```sh
-export PATH="$HOME/.local/bin:$PATH"
-```
-
-After installation, configure [Neovim](#neovim) or [Vim/gVim](#vim-and-gvim).
-The explicit executable paths in the examples also work when a desktop editor
-does not inherit your shell's `PATH`.
-
-### Linux x86-64
-
-The `CI` workflow builds both Linux x86-64 and Apple Silicon binaries in each
-run. After CI succeeds on the current `main` commit, it automatically publishes
-both archives and `SHA256SUMS` to [GitHub Releases](https://github.com/zyosaidouki/systemd-lsp/releases/latest).
-Each release uses a `build-<run number>-<attempt>` tag pointing to the tested
-commit. Pull requests do not publish releases. Archives also remain available
-in the workflow run's Artifacts section.
-
-Download and install the latest Linux build without GitHub authentication:
-
-```sh
-curl -fL --retry 3 -o systemd-lsp-linux-amd64.tar.gz \
-  https://github.com/zyosaidouki/systemd-lsp/releases/latest/download/systemd-lsp-linux-amd64.tar.gz
-tar -xzf systemd-lsp-linux-amd64.tar.gz
-mkdir -p "$HOME/.local/bin"
-install -m 755 systemd-lsp "$HOME/.local/bin/systemd-lsp"
-```
-
-Add `$HOME/.local/bin` to your `PATH`, or configure your editor to use that
-absolute executable path. To build locally (including from macOS):
-
-```sh
-mkdir -p dist/linux-amd64
-GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build -trimpath \
-  -o dist/linux-amd64/systemd-lsp ./cmd/systemd-lsp
-```
-
-### Apple Silicon (macOS arm64)
-
-To build the language server for Apple Silicon, including from Linux:
-
-```sh
-mkdir -p dist/darwin-arm64
-GOOS=darwin GOARCH=arm64 CGO_ENABLED=0 go build -trimpath \
-  -o dist/darwin-arm64/systemd-lsp ./cmd/systemd-lsp
-```
-
-The `CI` workflow also cross-compiles this binary on the Linux self-hosted
-runner. Download and install the latest release on your Mac:
-
-```sh
-curl -fL --retry 3 -o systemd-lsp-darwin-arm64.tar.gz \
-  https://github.com/zyosaidouki/systemd-lsp/releases/latest/download/systemd-lsp-darwin-arm64.tar.gz
-tar -xzf systemd-lsp-darwin-arm64.tar.gz
-mkdir -p "$HOME/.local/bin"
-install -m 755 systemd-lsp "$HOME/.local/bin/systemd-lsp"
-```
-
-Add `$HOME/.local/bin` to your `PATH`, or configure your editor to use that
-absolute executable path. The archive preserves the executable permission.
-CI tests run on Linux; the macOS binary is cross-compiled, not tested on macOS
-by the workflow.
-
-### Update from Releases
-
-```sh
-systemd-lsp update
-```
-
-This command downloads the latest release for Linux x86-64 or macOS arm64,
-verifies its SHA-256 checksum and executable format, and atomically replaces
-the invoked executable. Symbolic links are followed to their target. Go and
-GitHub authentication are not required. The executable's directory must be
-writable by your user; a failed download or validation leaves it unchanged.
-Restart your editor's LSP client after updating.
-
-Older binaries without the `update` command need a one-time installation using
-the release download commands above. If multiple copies are installed, invoke
-the full path used by your editor, for example
-`$HOME/.local/bin/systemd-lsp update`. The command updates the server binary;
-Vim plugin files are still managed by your plugin manager.
-
-For checksum verification, download `SHA256SUMS` and the archive from the same
-tagged release, then use `sha256sum --ignore-missing -c SHA256SUMS` on Linux or
-compare `shasum -a 256` output on macOS.
-
-## Setup
-
-Complete these steps after installing the `systemd-lsp` executable:
-
-1. Confirm that the executable is available in the current shell:
-
-   ```sh
-   command -v systemd-lsp
-   ```
-
-   The command must print the path to the executable. An editor started from a
-   desktop menu may use a different `PATH`; use an absolute executable path in
-   the editor configuration if necessary. Do not run `systemd-lsp` directly as
-   a health check; it communicates over standard input and output and waits for
-   an LSP client.
-
-2. Configure one editor integration:
-
-   - Use the [Neovim setup](#neovim) with Neovim's built-in LSP client.
-   - Use the [Vim and gVim setup](#vim-and-gvim) with `vim-lsp`.
-
-3. Restart the editor and open a systemd unit file such as
-   `example.service`.
-
-4. In the editor, check the detected filetype:
-
-   ```vim
-   :set filetype?
-   ```
-
-   The result must be `filetype=systemd`. If it is empty or different, add the
-   filetype configuration shown in the relevant editor section below.
-
-5. Confirm that the language server is running. In Neovim, run:
-
-   ```vim
-   :lua print(vim.inspect(vim.lsp.get_clients({ bufnr = 0 })))
-   ```
-
-   In Vim or gVim with `vim-lsp`, run:
-
-   ```vim
-   :LspStatus
-   ```
-
-   The output should include a running client named `systemd-lsp`. Opening a
-   new, empty standalone `.service` file should then insert the default service
-   template. Files containing non-whitespace content, drop-ins, and other unit
-   types are left unchanged.
+In Vim/gVim, use `:LspStatus`. Opening a new, empty standalone `.service` file
+should insert a template. Existing files and drop-ins are not populated.
+If installation fails, inspect `:messages` and retry `:SystemdLspUpdate`.
 
 ### Supported file extensions
 
@@ -260,225 +133,92 @@ filetype rules.
 
 ## Neovim
 
-### Setup with lazy.nvim and release binaries
-
-For Neovim 0.11 or newer with lazy.nvim, install the release binary first.
-Save the following as `~/.config/nvim/lsp/systemd.lua`:
-
-```lua
-return {
-  cmd = { vim.fn.expand("~/.local/bin/systemd-lsp") },
-  filetypes = { "systemd" },
-  root_markers = { ".git" },
-  workspace_required = false,
-  init_options = { locale = "ja" },
-}
-```
-
-Add this plugin specification to your lazy.nvim configuration. If your setup
-imports `lua/plugins`, save it as
-`~/.config/nvim/lua/plugins/systemd.lua`:
+Requires Neovim 0.11 or newer. With lazy.nvim, add this plugin specification
+(for configurations importing `lua/plugins`, save it as
+`~/.config/nvim/lua/plugins/systemd.lua`):
 
 ```lua
 return {
   {
     "zyosaidouki/systemd-lsp",
     lazy = false,
-    build = function()
-      local output = vim.fn.system({
-        vim.fn.expand("~/.local/bin/systemd-lsp"), "update",
-      })
-      if vim.v.shell_error ~= 0 then
-        error(output)
-      end
-    end,
-    config = function()
-      vim.lsp.enable("systemd")
+    init = function()
+      vim.g.systemd_lsp_locale = "ja" -- optional; default is English
     end,
   },
 }
 ```
 
-Run `:Lazy sync`, restart Neovim, and open a `.service` file. Use
-`:checkhealth vim.lsp` to inspect the client. The build hook downloads the latest
-release whenever lazy.nvim runs the plugin's build step; it does not run on
-every editor startup. You can also run `systemd-lsp update` in a terminal at
-any time and restart the LSP client afterward.
+Run `:Lazy sync` and restart Neovim. No `build` hook, custom update command,
+`lsp/systemd.lua`, or `vim.lsp.enable` call is needed. The plugin configures
+filetype detection and its built-in LSP client automatically.
 
-When migrating an existing configuration, replace its
-`build = "go install ./cmd/systemd-lsp"` hook and any `~/go/bin/systemd-lsp`
-path with the settings above. Use this configuration or the manual setup
-below so that the server is not started twice.
+Without a plugin manager, clone into Neovim's native package directory:
 
-### Manual setup
-
-With Neovim 0.11 or newer:
-
-```lua
-vim.api.nvim_create_autocmd("FileType", {
-  pattern = "systemd",
-  callback = function()
-    vim.lsp.start({
-      name = "systemd-lsp",
-      cmd = { "systemd-lsp" },
-      root_dir = vim.fs.root(0, { ".git" }) or vim.fn.getcwd(),
-    })
-  end,
-})
+```sh
+git clone https://github.com/zyosaidouki/systemd-lsp \
+  ~/.config/nvim/pack/lsp/start/systemd-lsp
 ```
 
-Completion and hover documentation is English by default. To show Japanese
-documentation:
+Restart Neovim. To select a locale or an optional external directive catalog,
+set these in `init.lua` before plugins load (or in lazy.nvim's `init` callback):
 
 ```lua
-vim.api.nvim_create_autocmd("FileType", {
-  pattern = "systemd",
-  callback = function()
-    vim.lsp.start({
-      name = "systemd-lsp",
-      cmd = { "systemd-lsp" },
-      root_dir = vim.fs.root(0, { ".git" }) or vim.fn.getcwd(),
-      initialization_options = {
-        locale = "ja",
-      },
-    })
-  end,
-})
-```
-
-Use `locale = "en"` or omit `initialization_options` for English.
-
-To use a generated catalog for a specific systemd version:
-
-```lua
-vim.api.nvim_create_autocmd("FileType", {
-  pattern = "systemd",
-  callback = function()
-    vim.lsp.start({
-      name = "systemd-lsp",
-      cmd = { "systemd-lsp" },
-      root_dir = vim.fs.root(0, { ".git" }) or vim.fn.getcwd(),
-      initialization_options = {
-        catalogPath = "/path/to/systemd-v258-catalog.json",
-      },
-    })
-  end,
-})
-```
-
-The language server already includes a generated parser catalog for broad
-default completion. Use `catalogPath` when you want to replace or enrich it
-with catalog data generated from a specific systemd version and its man XML.
-You can also set `SYSTEMD_LSP_CATALOG=/path/to/catalog.json` before starting
-the language server.
-
-If your Neovim does not detect systemd files automatically, add:
-
-```lua
-vim.filetype.add({
-  extension = {
-    service = "systemd",
-    socket = "systemd",
-    timer = "systemd",
-    path = "systemd",
-    mount = "systemd",
-    automount = "systemd",
-    swap = "systemd",
-    target = "systemd",
-    slice = "systemd",
-    scope = "systemd",
-  },
-  pattern = {
-    [".*/.+%.service%.d/.+%.conf"] = "systemd",
-    [".*/.+%.socket%.d/.+%.conf"] = "systemd",
-    [".*/.+%.timer%.d/.+%.conf"] = "systemd",
-    [".*/.+%.path%.d/.+%.conf"] = "systemd",
-    [".*/.+%.mount%.d/.+%.conf"] = "systemd",
-    [".*/.+%.automount%.d/.+%.conf"] = "systemd",
-    [".*/.+%.swap%.d/.+%.conf"] = "systemd",
-    [".*/.+%.target%.d/.+%.conf"] = "systemd",
-    [".*/.+%.slice%.d/.+%.conf"] = "systemd",
-    [".*/.+%.scope%.d/.+%.conf"] = "systemd",
-  },
-})
+vim.g.systemd_lsp_locale = "ja" -- use "en" for English
+vim.g.systemd_lsp_catalog_path = "/path/to/catalog.json" -- optional
 ```
 
 ## Vim and gVim
 
-Vim and gVim use the same Vimscript configuration. This repository includes
-filetype detection and automatic registration for
-[`prabirshrestha/vim-lsp`](https://github.com/prabirshrestha/vim-lsp).
-
-Check that Vim has the features needed by `vim-lsp`:
+Requires Vim/gVim 8.0 or newer with `+job`, `+channel`, timers, lambdas, and JSON
+support, and the `prabirshrestha/vim-lsp` client plugin. With vim-plug, put this
+in `~/.vimrc`:
 
 ```vim
-:echo has('job') && has('channel') && has('timers') && has('lambda') && exists('*json_encode')
-```
-
-The result must be `1`.
-
-### With a plugin manager
-
-A plugin manager is optional. For example, with `vim-plug`:
-
-```vim
+filetype plugin on
+let g:systemd_lsp_locale = 'ja' " optional; default is English
 call plug#begin()
 Plug 'prabirshrestha/vim-lsp'
 Plug 'zyosaidouki/systemd-lsp'
 call plug#end()
 ```
 
-Install the server from Releases first, then run `:PlugInstall` and restart
-Vim or gVim. Update the server with `systemd-lsp update`; plugin updates do not
-compile the server or require Go.
+Run `:PlugInstall`, then restart Vim/gVim. Do not add a `go install` hook or set
+`g:systemd_lsp_command`: the plugin uses its own managed binary.
 
-### Without a plugin manager
-
-Vim's built-in package support can load both repositories directly:
-
-Install the release binary first using the platform instructions above.
+Without a plugin manager, install both native packages:
 
 ```sh
 mkdir -p ~/.vim/pack/lsp/start
-git clone --depth 1 https://github.com/prabirshrestha/vim-lsp \
+git clone https://github.com/prabirshrestha/vim-lsp \
   ~/.vim/pack/lsp/start/vim-lsp
-git clone --depth 1 https://github.com/zyosaidouki/systemd-lsp \
+git clone https://github.com/zyosaidouki/systemd-lsp \
   ~/.vim/pack/lsp/start/systemd-lsp
 ```
 
-No separate package manager is used by this method. The `git` commands may be
-replaced by downloading and extracting the two repositories into the same
-directories.
+Add `filetype plugin on` to `~/.vimrc` and restart. Both installation methods
+provide `:SystemdLspUpdate`. Completion uses `Ctrl-X Ctrl-O`; hover and symbols
+are available through `:LspHover` and `:LspDocumentSymbol`.
 
-### Configuration
-
-Add this to `~/.vimrc` to enable filetype plugins and select Japanese
-documentation:
+For an optional external catalog, set this before plugins load:
 
 ```vim
-filetype plugin on
-let g:systemd_lsp_locale = 'ja'
-let g:systemd_lsp_command = expand('~/.local/bin/systemd-lsp')
-```
-
-Use `en` instead of `ja` for English documentation. Completion is available
-through Vim's standard omni-completion with `Ctrl-X Ctrl-O`. Hover and document
-symbols are available through `:LspHover` and `:LspDocumentSymbol`.
-
-When gVim is started from a desktop menu, it may not inherit the shell's
-`PATH`. In that case, set the executable explicitly before the plugins load:
-
-```vim
-let g:systemd_lsp_command = expand('~/.local/bin/systemd-lsp')
-```
-
-An external catalog can also be selected in `.vimrc`:
-
-```vim
-let g:systemd_lsp_catalog_path = '/path/to/systemd-v258-catalog.json'
+let g:systemd_lsp_catalog_path = '/path/to/catalog.json'
 ```
 
 ## Development
+
+Building from source is optional and requires Go 1.26 or newer. To build the
+managed executable locally:
+
+```sh
+mkdir -p bin
+go build -o bin/systemd-lsp ./cmd/systemd-lsp
+```
+
+Other LSP clients can use a manually downloaded release or a source build.
+The standalone executable still supports `systemd-lsp update`; editor users
+use `:SystemdLspUpdate` instead.
 
 GitHub Actions runs tests, `go vet`, and a build on the Linux x64 self-hosted
 runner for pushes to `main` and pull requests from this repository. Fork pull
