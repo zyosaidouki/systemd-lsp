@@ -131,9 +131,25 @@ absolute executable path. The archive preserves the executable permission.
 CI tests run on Linux; the macOS binary is cross-compiled, not tested on macOS
 by the workflow.
 
-To update, repeat the download and installation commands for your platform,
-then restart your editor's LSP client. Install to the executable path your
-editor actually uses if it differs from `$HOME/.local/bin/systemd-lsp`.
+### Update from Releases
+
+```sh
+systemd-lsp update
+```
+
+This command downloads the latest release for Linux x86-64 or macOS arm64,
+verifies its SHA-256 checksum and executable format, and atomically replaces
+the invoked executable. Symbolic links are followed to their target. Go and
+GitHub authentication are not required. The executable's directory must be
+writable by your user; a failed download or validation leaves it unchanged.
+Restart your editor's LSP client after updating.
+
+Older binaries without the `update` command need a one-time installation using
+the release download commands above. If multiple copies are installed, invoke
+the full path used by your editor, for example
+`$HOME/.local/bin/systemd-lsp update`. The command updates the server binary;
+Vim plugin files are still managed by your plugin manager.
+
 For checksum verification, download `SHA256SUMS` and the archive from the same
 tagged release, then use `sha256sum --ignore-missing -c SHA256SUMS` on Linux or
 compare `shasum -a 256` output on macOS.

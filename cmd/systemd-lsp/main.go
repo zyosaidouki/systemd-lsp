@@ -13,9 +13,26 @@ import (
 
 	"github.com/zyosaidouki/systemd-lsp/internal/lsp"
 	"github.com/zyosaidouki/systemd-lsp/internal/systemd"
+	"github.com/zyosaidouki/systemd-lsp/internal/update"
 )
 
 func main() {
+	if len(os.Args) > 1 {
+		if len(os.Args) == 2 && os.Args[1] == "update" {
+			tag, err := update.Run()
+			if err != nil {
+				fmt.Fprintln(os.Stderr, "systemd-lsp: update failed:", err)
+				os.Exit(1)
+			}
+			fmt.Printf("Updated systemd-lsp to %s. Restart your editor's LSP client.\n", tag)
+			return
+		}
+		fmt.Fprintln(os.Stderr, "Usage: systemd-lsp [update]\nWithout arguments, starts the LSP server over stdio.")
+		if len(os.Args) == 2 && (os.Args[1] == "--help" || os.Args[1] == "-h") {
+			return
+		}
+		os.Exit(1)
+	}
 	logger := log.New(os.Stderr, "systemd-lsp: ", log.LstdFlags)
 	catalog := systemd.NewCatalog()
 	if path := os.Getenv("SYSTEMD_LSP_CATALOG"); path != "" {
