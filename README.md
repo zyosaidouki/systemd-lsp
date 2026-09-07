@@ -39,6 +39,12 @@ client.
 
 ## Installation requirements
 
+The recommended installation uses the prebuilt [release binaries](#linux-x86-64).
+It does not require Go or create a `~/go` directory. Update with
+`systemd-lsp update` after installation.
+
+### Optional installation from source
+
 Installing with `go install` requires:
 
 - Go 1.22 or newer
@@ -58,7 +64,7 @@ requires a checkout of that systemd source tree. `git` and `curl` are used by
 the examples in this README, but neither is a runtime dependency of the
 language server.
 
-## Install
+## Install from source (optional)
 
 ```sh
 go install github.com/zyosaidouki/systemd-lsp/cmd/systemd-lsp@latest
@@ -76,6 +82,25 @@ For local development from this repository:
 ```sh
 go install ./cmd/systemd-lsp
 ```
+
+## Install from Releases (recommended)
+
+Perform installation and editor configuration once per machine. Starting your
+editor or updating the server does not require repeating the setup. These
+instructions use `~/.local/bin/systemd-lsp` and do not require Go or create
+`~/go`.
+
+Choose the download commands for your platform below. To use `systemd-lsp`
+from a terminal, add this line once to `~/.zshrc` (zsh) or `~/.bashrc` (bash),
+then open a new terminal:
+
+```sh
+export PATH="$HOME/.local/bin:$PATH"
+```
+
+After installation, configure [Neovim](#neovim) or [Vim/gVim](#vim-and-gvim).
+The explicit executable paths in the examples also work when a desktop editor
+does not inherit your shell's `PATH`.
 
 ### Linux x86-64
 
@@ -235,6 +260,58 @@ filetype rules.
 
 ## Neovim
 
+### Setup with lazy.nvim and release binaries
+
+For Neovim 0.11 or newer with lazy.nvim, install the release binary first.
+Save the following as `~/.config/nvim/lsp/systemd.lua`:
+
+```lua
+return {
+  cmd = { vim.fn.expand("~/.local/bin/systemd-lsp") },
+  filetypes = { "systemd" },
+  root_markers = { ".git" },
+  workspace_required = false,
+  init_options = { locale = "ja" },
+}
+```
+
+Add this plugin specification to your lazy.nvim configuration. If your setup
+imports `lua/plugins`, save it as
+`~/.config/nvim/lua/plugins/systemd.lua`:
+
+```lua
+return {
+  {
+    "zyosaidouki/systemd-lsp",
+    lazy = false,
+    build = function()
+      local output = vim.fn.system({
+        vim.fn.expand("~/.local/bin/systemd-lsp"), "update",
+      })
+      if vim.v.shell_error ~= 0 then
+        error(output)
+      end
+    end,
+    config = function()
+      vim.lsp.enable("systemd")
+    end,
+  },
+}
+```
+
+Run `:Lazy sync`, restart Neovim, and open a `.service` file. Use
+`:checkhealth vim.lsp` to inspect the client. The build hook downloads the latest
+release whenever lazy.nvim runs the plugin's build step; it does not run on
+every editor startup. You can also run `systemd-lsp update` in a terminal at
+any time and restart the LSP client afterward.
+
+When migrating an existing configuration, replace its
+`build = "go install ./cmd/systemd-lsp"` hook and any `~/go/bin/systemd-lsp`
+path with the settings above. Use this configuration or the manual setup
+below so that the server is not started twice.
+
+### Manual setup
+
 With Neovim 0.11 or newer:
 
 ```lua
@@ -347,19 +424,21 @@ A plugin manager is optional. For example, with `vim-plug`:
 ```vim
 call plug#begin()
 Plug 'prabirshrestha/vim-lsp'
-Plug 'zyosaidouki/systemd-lsp', { 'do': 'go install ./cmd/systemd-lsp' }
+Plug 'zyosaidouki/systemd-lsp'
 call plug#end()
 ```
 
-Run `:PlugInstall`, then restart Vim or gVim.
+Install the server from Releases first, then run `:PlugInstall` and restart
+Vim or gVim. Update the server with `systemd-lsp update`; plugin updates do not
+compile the server or require Go.
 
 ### Without a plugin manager
 
 Vim's built-in package support can load both repositories directly:
 
-```sh
-go install github.com/zyosaidouki/systemd-lsp/cmd/systemd-lsp@latest
+Install the release binary first using the platform instructions above.
 
+```sh
 mkdir -p ~/.vim/pack/lsp/start
 git clone --depth 1 https://github.com/prabirshrestha/vim-lsp \
   ~/.vim/pack/lsp/start/vim-lsp
@@ -379,6 +458,7 @@ documentation:
 ```vim
 filetype plugin on
 let g:systemd_lsp_locale = 'ja'
+let g:systemd_lsp_command = expand('~/.local/bin/systemd-lsp')
 ```
 
 Use `en` instead of `ja` for English documentation. Completion is available
@@ -389,7 +469,7 @@ When gVim is started from a desktop menu, it may not inherit the shell's
 `PATH`. In that case, set the executable explicitly before the plugins load:
 
 ```vim
-let g:systemd_lsp_command = expand('~/go/bin/systemd-lsp')
+let g:systemd_lsp_command = expand('~/.local/bin/systemd-lsp')
 ```
 
 An external catalog can also be selected in `.vimrc`:
