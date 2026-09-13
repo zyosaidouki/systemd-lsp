@@ -21,13 +21,13 @@ type TextDocumentIdentifier struct {
 
 type VersionedTextDocumentIdentifier struct {
 	URI     string `json:"uri"`
-	Version int    `json:"version,omitempty"`
+	Version int    `json:"version,omitzero"`
 }
 
 type TextDocumentItem struct {
 	URI        string `json:"uri"`
 	LanguageID string `json:"languageId,omitempty"`
-	Version    int    `json:"version,omitempty"`
+	Version    int    `json:"version,omitzero"`
 	Text       string `json:"text"`
 }
 
@@ -38,7 +38,7 @@ type TextDocumentPositionParams struct {
 
 type Diagnostic struct {
 	Range    Range  `json:"range"`
-	Severity int    `json:"severity,omitempty"`
+	Severity int    `json:"severity,omitzero"`
 	Source   string `json:"source,omitempty"`
 	Message  string `json:"message"`
 }
@@ -51,12 +51,18 @@ const (
 )
 
 type CompletionItem struct {
-	Label            string `json:"label"`
-	Kind             int    `json:"kind,omitempty"`
-	Detail           string `json:"detail,omitempty"`
-	Documentation    string `json:"documentation,omitempty"`
-	InsertText       string `json:"insertText,omitempty"`
-	InsertTextFormat int    `json:"insertTextFormat,omitempty"`
+	Label            string    `json:"label"`
+	Kind             int       `json:"kind,omitzero"`
+	Detail           string    `json:"detail,omitempty"`
+	Documentation    string    `json:"documentation,omitempty"`
+	InsertText       string    `json:"insertText,omitempty"`
+	InsertTextFormat int       `json:"insertTextFormat,omitzero"`
+	TextEdit         *TextEdit `json:"textEdit,omitzero"`
+}
+
+type TextEdit struct {
+	Range   Range  `json:"range"`
+	NewText string `json:"newText"`
 }
 
 const (
@@ -81,7 +87,7 @@ type MarkupContent struct {
 
 type Hover struct {
 	Contents MarkupContent `json:"contents"`
-	Range    *Range        `json:"range,omitempty"`
+	Range    *Range        `json:"range,omitzero"`
 }
 
 type DocumentSymbol struct {

@@ -3,7 +3,7 @@ package main
 import (
 	"bufio"
 	"bytes"
-	"encoding/json"
+	"encoding/json/jsontext"
 	"strconv"
 	"testing"
 )
@@ -62,6 +62,6 @@ type staticHandler struct {
 	responses [][]byte
 }
 
-func (h staticHandler) Handle(json.RawMessage) [][]byte {
+func (h staticHandler) Handle(jsontext.Value) [][]byte {
 	return h.responses
 }

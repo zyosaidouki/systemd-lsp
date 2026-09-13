@@ -1,5 +1,5 @@
 {
-  "version": "main",
+  "version": "v262-rc2",
   "source": "systemd src/core/load-fragment-gperf.gperf.in",
   "directives": [
     {
@@ -193,19 +193,42 @@
       "section": "Mount",
       "name": "CPUAffinity",
       "parser": "config_parse_exec_cpu_affinity",
-      "valueKind": "string"
+      "valueKind": "string",
+      "multiple": true
     },
     {
       "section": "Mount",
       "name": "CPUPressureThresholdSec",
       "parser": "config_parse_sec",
-      "valueKind": "duration"
+      "valueKind": "duration",
+      "doc": "CPU stall time that triggers a notification within a two-second window. Used with CPUPressureWatch=. Accepts time units such as ms and us; the manager default is 200ms.",
+      "docJapanese": "2秒間の測定窓で通知を発生させるCPU待ち時間の閾値です。CPUPressureWatch= と併用します。ms や us などの時間単位を使え、マネージャーの既定値は 200ms です。",
+      "since": 261,
+      "example": "CPUPressureThresholdSec=200ms",
+      "manPage": "systemd.resource-control(5)"
     },
     {
       "section": "Mount",
       "name": "CPUPressureWatch",
       "parser": "config_parse_pressure_watch",
-      "valueKind": "string"
+      "valueKind": "enum",
+      "doc": "Configures CPU pressure notifications. auto enables monitoring when CPU resource controls are configured; skip leaves the notification environment untouched. The service must implement pressure handling.",
+      "docJapanese": "CPUの待ち時間に関する負荷通知を設定します。auto はCPUリソース制御がある場合に有効化し、skip は通知用環境変数を設定しません。通知を処理するにはサービス側の対応が必要です。",
+      "since": 261,
+      "example": "CPUPressureWatch=yes\nCPUPressureThresholdSec=200ms",
+      "manPage": "systemd.resource-control(5)",
+      "values": [
+        "true",
+        "false",
+        "yes",
+        "no",
+        "on",
+        "off",
+        "1",
+        "0",
+        "auto",
+        "skip"
+      ]
     },
     {
       "section": "Mount",
@@ -251,7 +274,17 @@
       "section": "Mount",
       "name": "CPUSetPartition",
       "parser": "config_parse_cpuset_partition",
-      "valueKind": "string"
+      "valueKind": "enum",
+      "doc": "Selects a cpuset partition: member for normal membership, root for a partition root, or isolated for CPU isolation. Also requires AllowedCPUs=; the kernel default is member.",
+      "docJapanese": "CPU集合の区分を指定します。member は通常の所属、root は区分のルート、isolated はCPUの分離です。AllowedCPUs= の指定も必要です。カーネルの既定値は member です。",
+      "since": 261,
+      "example": "AllowedCPUs=2-3\nCPUSetPartition=isolated",
+      "manPage": "systemd.resource-control(5)",
+      "values": [
+        "member",
+        "root",
+        "isolated"
+      ]
     },
     {
       "section": "Mount",
@@ -540,13 +573,35 @@
       "section": "Mount",
       "name": "IOPressureThresholdSec",
       "parser": "config_parse_sec",
-      "valueKind": "duration"
+      "valueKind": "duration",
+      "doc": "I/O stall time that triggers a notification within a two-second window. Used with IOPressureWatch=. Accepts time units such as ms and us; the manager default is 200ms.",
+      "docJapanese": "2秒間の測定窓で通知を発生させるI/O待ち時間の閾値です。IOPressureWatch= と併用します。ms や us などの時間単位を使え、マネージャーの既定値は 200ms です。",
+      "since": 261,
+      "example": "IOPressureThresholdSec=200ms",
+      "manPage": "systemd.resource-control(5)"
     },
     {
       "section": "Mount",
       "name": "IOPressureWatch",
       "parser": "config_parse_pressure_watch",
-      "valueKind": "string"
+      "valueKind": "enum",
+      "doc": "Configures I/O pressure notifications. auto enables monitoring when I/O accounting is enabled; skip leaves the notification environment untouched. The service must implement pressure handling.",
+      "docJapanese": "I/Oの待ち時間に関する負荷通知を設定します。auto はI/O使用量の集計が有効な場合に有効化し、skip は通知用環境変数を設定しません。通知を処理するにはサービス側の対応が必要です。",
+      "since": 261,
+      "example": "IOPressureWatch=yes\nIOPressureThresholdSec=200ms",
+      "manPage": "systemd.resource-control(5)",
+      "values": [
+        "true",
+        "false",
+        "yes",
+        "no",
+        "on",
+        "off",
+        "1",
+        "0",
+        "auto",
+        "skip"
+      ]
     },
     {
       "section": "Mount",
@@ -1125,7 +1180,21 @@
       "section": "Mount",
       "name": "NUMAPolicy",
       "parser": "config_parse_numa_policy",
-      "valueKind": "string"
+      "valueKind": "enum",
+      "doc": "Sets the NUMA memory policy; NUMAMask= selects nodes. preferred-many requires Linux 5.15+; weighted-interleave requires Linux 6.9+ and kernel-configured weights. Both new policies require systemd v262 (preview).",
+      "docJapanese": "NUMAメモリ配置方針です。対象ノードは NUMAMask= で指定します。preferred-many は Linux 5.15 以降、weighted-interleave は Linux 6.9 以降とカーネル側の重み設定が必要です。この2値は systemd v262 向けの先行対応です。",
+      "since": 243,
+      "example": "NUMAPolicy=bind\nNUMAMask=0",
+      "manPage": "systemd.exec(5)",
+      "values": [
+        "default",
+        "preferred",
+        "bind",
+        "interleave",
+        "local",
+        "preferred-many",
+        "weighted-interleave"
+      ]
     },
     {
       "section": "Mount",
@@ -1287,7 +1356,26 @@
       "section": "Mount",
       "name": "PrivateUsers",
       "parser": "config_parse_private_users",
-      "valueKind": "string"
+      "valueKind": "enum",
+      "doc": "Creates a user namespace. self maps root and the service user; identity maps the first 65536 IDs; managed allocates an ID range; full maps the entire UID/GID range (v258+).",
+      "docJapanese": "ユーザー名前空間を作成します。self は root とサービスのユーザー、identity は先頭65536個のID、managed は動的に割り当てたID範囲、full はUID/GID全域をマッピングします（full は v258 以降）。",
+      "since": 232,
+      "example": "PrivateUsers=yes",
+      "manPage": "systemd.exec(5)",
+      "values": [
+        "true",
+        "false",
+        "yes",
+        "no",
+        "on",
+        "off",
+        "1",
+        "0",
+        "self",
+        "identity",
+        "managed",
+        "full"
+      ]
     },
     {
       "section": "Mount",
@@ -1606,8 +1694,27 @@
       "section": "Mount",
       "name": "SecureBits",
       "parser": "config_parse_exec_secure_bits",
-      "valueKind": "duration",
-      "multiple": true
+      "valueKind": "enum-list",
+      "doc": "Space-separated securebits flags. Repeated assignments combine flags; an empty assignment resets them. no-cap-ambient-raise, exec-restrict-file, exec-deny-interactive and their locked variants are v262 preview additions.",
+      "docJapanese": "securebits フラグを空白区切りで指定します。複数回の代入はフラグを結合し、空の代入でリセットします。no-cap-ambient-raise、exec-restrict-file、exec-deny-interactive と各 locked 版は v262 向けの先行対応です。",
+      "syntax": "SecureBits=\u003cflag\u003e ...",
+      "example": "SecureBits=keep-caps no-setuid-fixup",
+      "manPage": "systemd.exec(5)",
+      "multiple": true,
+      "values": [
+        "keep-caps",
+        "keep-caps-locked",
+        "no-setuid-fixup",
+        "no-setuid-fixup-locked",
+        "noroot",
+        "noroot-locked",
+        "no-cap-ambient-raise",
+        "no-cap-ambient-raise-locked",
+        "exec-restrict-file",
+        "exec-restrict-file-locked",
+        "exec-deny-interactive",
+        "exec-deny-interactive-locked"
+      ]
     },
     {
       "section": "Mount",
@@ -2257,13 +2364,35 @@
       "section": "Scope",
       "name": "CPUPressureThresholdSec",
       "parser": "config_parse_sec",
-      "valueKind": "duration"
+      "valueKind": "duration",
+      "doc": "CPU stall time that triggers a notification within a two-second window. Used with CPUPressureWatch=. Accepts time units such as ms and us; the manager default is 200ms.",
+      "docJapanese": "2秒間の測定窓で通知を発生させるCPU待ち時間の閾値です。CPUPressureWatch= と併用します。ms や us などの時間単位を使え、マネージャーの既定値は 200ms です。",
+      "since": 261,
+      "example": "CPUPressureThresholdSec=200ms",
+      "manPage": "systemd.resource-control(5)"
     },
     {
       "section": "Scope",
       "name": "CPUPressureWatch",
       "parser": "config_parse_pressure_watch",
-      "valueKind": "string"
+      "valueKind": "enum",
+      "doc": "Configures CPU pressure notifications. auto enables monitoring when CPU resource controls are configured; skip leaves the notification environment untouched. The service must implement pressure handling.",
+      "docJapanese": "CPUの待ち時間に関する負荷通知を設定します。auto はCPUリソース制御がある場合に有効化し、skip は通知用環境変数を設定しません。通知を処理するにはサービス側の対応が必要です。",
+      "since": 261,
+      "example": "CPUPressureWatch=yes\nCPUPressureThresholdSec=200ms",
+      "manPage": "systemd.resource-control(5)",
+      "values": [
+        "true",
+        "false",
+        "yes",
+        "no",
+        "on",
+        "off",
+        "1",
+        "0",
+        "auto",
+        "skip"
+      ]
     },
     {
       "section": "Scope",
@@ -2281,7 +2410,17 @@
       "section": "Scope",
       "name": "CPUSetPartition",
       "parser": "config_parse_cpuset_partition",
-      "valueKind": "string"
+      "valueKind": "enum",
+      "doc": "Selects a cpuset partition: member for normal membership, root for a partition root, or isolated for CPU isolation. Also requires AllowedCPUs=; the kernel default is member.",
+      "docJapanese": "CPU集合の区分を指定します。member は通常の所属、root は区分のルート、isolated はCPUの分離です。AllowedCPUs= の指定も必要です。カーネルの既定値は member です。",
+      "since": 261,
+      "example": "AllowedCPUs=2-3\nCPUSetPartition=isolated",
+      "manPage": "systemd.resource-control(5)",
+      "values": [
+        "member",
+        "root",
+        "isolated"
+      ]
     },
     {
       "section": "Scope",
@@ -2404,13 +2543,35 @@
       "section": "Scope",
       "name": "IOPressureThresholdSec",
       "parser": "config_parse_sec",
-      "valueKind": "duration"
+      "valueKind": "duration",
+      "doc": "I/O stall time that triggers a notification within a two-second window. Used with IOPressureWatch=. Accepts time units such as ms and us; the manager default is 200ms.",
+      "docJapanese": "2秒間の測定窓で通知を発生させるI/O待ち時間の閾値です。IOPressureWatch= と併用します。ms や us などの時間単位を使え、マネージャーの既定値は 200ms です。",
+      "since": 261,
+      "example": "IOPressureThresholdSec=200ms",
+      "manPage": "systemd.resource-control(5)"
     },
     {
       "section": "Scope",
       "name": "IOPressureWatch",
       "parser": "config_parse_pressure_watch",
-      "valueKind": "string"
+      "valueKind": "enum",
+      "doc": "Configures I/O pressure notifications. auto enables monitoring when I/O accounting is enabled; skip leaves the notification environment untouched. The service must implement pressure handling.",
+      "docJapanese": "I/Oの待ち時間に関する負荷通知を設定します。auto はI/O使用量の集計が有効な場合に有効化し、skip は通知用環境変数を設定しません。通知を処理するにはサービス側の対応が必要です。",
+      "since": 261,
+      "example": "IOPressureWatch=yes\nIOPressureThresholdSec=200ms",
+      "manPage": "systemd.resource-control(5)",
+      "values": [
+        "true",
+        "false",
+        "yes",
+        "no",
+        "on",
+        "off",
+        "1",
+        "0",
+        "auto",
+        "skip"
+      ]
     },
     {
       "section": "Scope",
@@ -2981,19 +3142,42 @@
       "section": "Service",
       "name": "CPUAffinity",
       "parser": "config_parse_exec_cpu_affinity",
-      "valueKind": "string"
+      "valueKind": "string",
+      "multiple": true
     },
     {
       "section": "Service",
       "name": "CPUPressureThresholdSec",
       "parser": "config_parse_sec",
-      "valueKind": "duration"
+      "valueKind": "duration",
+      "doc": "CPU stall time that triggers a notification within a two-second window. Used with CPUPressureWatch=. Accepts time units such as ms and us; the manager default is 200ms.",
+      "docJapanese": "2秒間の測定窓で通知を発生させるCPU待ち時間の閾値です。CPUPressureWatch= と併用します。ms や us などの時間単位を使え、マネージャーの既定値は 200ms です。",
+      "since": 261,
+      "example": "CPUPressureThresholdSec=200ms",
+      "manPage": "systemd.resource-control(5)"
     },
     {
       "section": "Service",
       "name": "CPUPressureWatch",
       "parser": "config_parse_pressure_watch",
-      "valueKind": "string"
+      "valueKind": "enum",
+      "doc": "Configures CPU pressure notifications. auto enables monitoring when CPU resource controls are configured; skip leaves the notification environment untouched. The service must implement pressure handling.",
+      "docJapanese": "CPUの待ち時間に関する負荷通知を設定します。auto はCPUリソース制御がある場合に有効化し、skip は通知用環境変数を設定しません。通知を処理するにはサービス側の対応が必要です。",
+      "since": 261,
+      "example": "CPUPressureWatch=yes\nCPUPressureThresholdSec=200ms",
+      "manPage": "systemd.resource-control(5)",
+      "values": [
+        "true",
+        "false",
+        "yes",
+        "no",
+        "on",
+        "off",
+        "1",
+        "0",
+        "auto",
+        "skip"
+      ]
     },
     {
       "section": "Service",
@@ -3039,7 +3223,17 @@
       "section": "Service",
       "name": "CPUSetPartition",
       "parser": "config_parse_cpuset_partition",
-      "valueKind": "string"
+      "valueKind": "enum",
+      "doc": "Selects a cpuset partition: member for normal membership, root for a partition root, or isolated for CPU isolation. Also requires AllowedCPUs=; the kernel default is member.",
+      "docJapanese": "CPU集合の区分を指定します。member は通常の所属、root は区分のルート、isolated はCPUの分離です。AllowedCPUs= の指定も必要です。カーネルの既定値は member です。",
+      "since": 261,
+      "example": "AllowedCPUs=2-3\nCPUSetPartition=isolated",
+      "manPage": "systemd.resource-control(5)",
+      "values": [
+        "member",
+        "root",
+        "isolated"
+      ]
     },
     {
       "section": "Service",
@@ -3253,6 +3447,11 @@
       "name": "ExecReloadPost",
       "parser": "config_parse_exec",
       "valueKind": "command",
+      "doc": "Commands executed after the service configuration reload completes.",
+      "docJapanese": "サービスの設定の再読み込みが完了した後に実行するコマンドです。",
+      "since": 259,
+      "example": "ExecReloadPost=/usr/bin/logger configuration-reloaded",
+      "manPage": "systemd.service(5)",
       "multiple": true
     },
     {
@@ -3344,7 +3543,18 @@
       "section": "Service",
       "name": "FileDescriptorStorePreserve",
       "parser": "config_parse_exec_preserve_mode",
-      "valueKind": "mode"
+      "valueKind": "enum",
+      "doc": "Controls file descriptor store retention. no releases it at stop, restart retains it during restart, and yes retains it until explicit cleanup. on-success (v261+) discards it only on permanent failure, after automatic restarts are exhausted.",
+      "docJapanese": "ファイルディスクリプタストアの保持条件です。no は停止時に解放、restart は再起動中に保持、yes は明示的な削除まで保持します。on-success（v261以降）は自動再起動を使い切った最終的な失敗時に解放します。",
+      "since": 254,
+      "example": "FileDescriptorStoreMax=16\nFileDescriptorStorePreserve=restart",
+      "manPage": "systemd.service(5)",
+      "values": [
+        "no",
+        "yes",
+        "restart",
+        "on-success"
+      ]
     },
     {
       "section": "Service",
@@ -3406,13 +3616,35 @@
       "section": "Service",
       "name": "IOPressureThresholdSec",
       "parser": "config_parse_sec",
-      "valueKind": "duration"
+      "valueKind": "duration",
+      "doc": "I/O stall time that triggers a notification within a two-second window. Used with IOPressureWatch=. Accepts time units such as ms and us; the manager default is 200ms.",
+      "docJapanese": "2秒間の測定窓で通知を発生させるI/O待ち時間の閾値です。IOPressureWatch= と併用します。ms や us などの時間単位を使え、マネージャーの既定値は 200ms です。",
+      "since": 261,
+      "example": "IOPressureThresholdSec=200ms",
+      "manPage": "systemd.resource-control(5)"
     },
     {
       "section": "Service",
       "name": "IOPressureWatch",
       "parser": "config_parse_pressure_watch",
-      "valueKind": "string"
+      "valueKind": "enum",
+      "doc": "Configures I/O pressure notifications. auto enables monitoring when I/O accounting is enabled; skip leaves the notification environment untouched. The service must implement pressure handling.",
+      "docJapanese": "I/Oの待ち時間に関する負荷通知を設定します。auto はI/O使用量の集計が有効な場合に有効化し、skip は通知用環境変数を設定しません。通知を処理するにはサービス側の対応が必要です。",
+      "since": 261,
+      "example": "IOPressureWatch=yes\nIOPressureThresholdSec=200ms",
+      "manPage": "systemd.resource-control(5)",
+      "values": [
+        "true",
+        "false",
+        "yes",
+        "no",
+        "on",
+        "off",
+        "1",
+        "0",
+        "auto",
+        "skip"
+      ]
     },
     {
       "section": "Service",
@@ -3981,7 +4213,21 @@
       "section": "Service",
       "name": "NUMAPolicy",
       "parser": "config_parse_numa_policy",
-      "valueKind": "string"
+      "valueKind": "enum",
+      "doc": "Sets the NUMA memory policy; NUMAMask= selects nodes. preferred-many requires Linux 5.15+; weighted-interleave requires Linux 6.9+ and kernel-configured weights. Both new policies require systemd v262 (preview).",
+      "docJapanese": "NUMAメモリ配置方針です。対象ノードは NUMAMask= で指定します。preferred-many は Linux 5.15 以降、weighted-interleave は Linux 6.9 以降とカーネル側の重み設定が必要です。この2値は systemd v262 向けの先行対応です。",
+      "since": 243,
+      "example": "NUMAPolicy=bind\nNUMAMask=0",
+      "manPage": "systemd.exec(5)",
+      "values": [
+        "default",
+        "preferred",
+        "bind",
+        "interleave",
+        "local",
+        "preferred-many",
+        "weighted-interleave"
+      ]
     },
     {
       "section": "Service",
@@ -4204,7 +4450,26 @@
       "section": "Service",
       "name": "PrivateUsers",
       "parser": "config_parse_private_users",
-      "valueKind": "string"
+      "valueKind": "enum",
+      "doc": "Creates a user namespace. self maps root and the service user; identity maps the first 65536 IDs; managed allocates an ID range; full maps the entire UID/GID range (v258+).",
+      "docJapanese": "ユーザー名前空間を作成します。self は root とサービスのユーザー、identity は先頭65536個のID、managed は動的に割り当てたID範囲、full はUID/GID全域をマッピングします（full は v258 以降）。",
+      "since": 232,
+      "example": "PrivateUsers=yes",
+      "manPage": "systemd.exec(5)",
+      "values": [
+        "true",
+        "false",
+        "yes",
+        "no",
+        "on",
+        "off",
+        "1",
+        "0",
+        "self",
+        "identity",
+        "managed",
+        "full"
+      ]
     },
     {
       "section": "Service",
@@ -4344,7 +4609,26 @@
       "section": "Service",
       "name": "RefreshOnReload",
       "parser": "config_parse_service_refresh_on_reload",
-      "valueKind": "string"
+      "valueKind": "resource-list",
+      "doc": "Refreshes extension images/directories and/or credentials on service reload. Accepts a boolean or a space-separated resource list; a leading ~ removes resources. Empty assignment restores the default, extensions.",
+      "docJapanese": "再読み込み時に拡張イメージ・ディレクトリや資格情報を更新します。真偽値または extensions / credentials の空白区切りリストを指定します。先頭の ~ は対象の除外、空の代入は既定値 extensions へのリセットです。",
+      "since": 260,
+      "syntax": "RefreshOnReload=yes|no|[~]extensions credentials",
+      "example": "RefreshOnReload=extensions credentials",
+      "manPage": "systemd.service(5)",
+      "multiple": true,
+      "values": [
+        "true",
+        "false",
+        "yes",
+        "no",
+        "on",
+        "off",
+        "1",
+        "0",
+        "extensions",
+        "credentials"
+      ]
     },
     {
       "section": "Service",
@@ -4438,7 +4722,12 @@
       "section": "Service",
       "name": "RestartRandomizedDelaySec",
       "parser": "config_parse_sec",
-      "valueKind": "duration"
+      "valueKind": "duration",
+      "doc": "Adds a uniformly random delay to RestartSec= and any exponential backoff on automatic restart, spreading simultaneous restarts. Preview support based on v262-rc2.",
+      "docJapanese": "自動再起動時に RestartSec= や指数バックオフへランダムな遅延を加え、一斉再起動を分散します。v262-rc2 に基づく先行対応です。",
+      "since": 262,
+      "example": "Restart=on-failure\nRestartSec=5s\nRestartRandomizedDelaySec=30s",
+      "manPage": "systemd.service(5)"
     },
     {
       "section": "Service",
@@ -4631,8 +4920,27 @@
       "section": "Service",
       "name": "SecureBits",
       "parser": "config_parse_exec_secure_bits",
-      "valueKind": "duration",
-      "multiple": true
+      "valueKind": "enum-list",
+      "doc": "Space-separated securebits flags. Repeated assignments combine flags; an empty assignment resets them. no-cap-ambient-raise, exec-restrict-file, exec-deny-interactive and their locked variants are v262 preview additions.",
+      "docJapanese": "securebits フラグを空白区切りで指定します。複数回の代入はフラグを結合し、空の代入でリセットします。no-cap-ambient-raise、exec-restrict-file、exec-deny-interactive と各 locked 版は v262 向けの先行対応です。",
+      "syntax": "SecureBits=\u003cflag\u003e ...",
+      "example": "SecureBits=keep-caps no-setuid-fixup",
+      "manPage": "systemd.exec(5)",
+      "multiple": true,
+      "values": [
+        "keep-caps",
+        "keep-caps-locked",
+        "no-setuid-fixup",
+        "no-setuid-fixup-locked",
+        "noroot",
+        "noroot-locked",
+        "no-cap-ambient-raise",
+        "no-cap-ambient-raise-locked",
+        "exec-restrict-file",
+        "exec-restrict-file-locked",
+        "exec-deny-interactive",
+        "exec-deny-interactive-locked"
+      ]
     },
     {
       "section": "Service",
@@ -5215,6 +5523,21 @@
     },
     {
       "section": "Slice",
+      "name": "ActivatingConcurrencyMax",
+      "parser": "config_parse_concurrency_max",
+      "valueKind": "concurrency",
+      "doc": "Limits simultaneous activations in this slice hierarchy. Excess starts wait in the queue; infinity disables the limit. 0 blocks all starts until raised. Configure service startup timeouts to avoid occupied slots being stuck. Preview support based on v262-rc2.",
+      "docJapanese": "スライス階層内で同時に起動処理できるユニット数を制限します。超過分は待機し、infinity は無制限です。0 は値を上げるまで全起動を保留します。起動枠が塞がれ続けないようサービス側に起動タイムアウトを設定します。v262-rc2 に基づく先行対応です。",
+      "since": 262,
+      "syntax": "ActivatingConcurrencyMax=\u003cunsigned integer\u003e|infinity",
+      "example": "ActivatingConcurrencyMax=4",
+      "manPage": "systemd.slice(5)",
+      "values": [
+        "infinity"
+      ]
+    },
+    {
+      "section": "Slice",
       "name": "AllowedCPUs",
       "parser": "config_parse_unit_cpu_set",
       "valueKind": "string"
@@ -5278,13 +5601,35 @@
       "section": "Slice",
       "name": "CPUPressureThresholdSec",
       "parser": "config_parse_sec",
-      "valueKind": "duration"
+      "valueKind": "duration",
+      "doc": "CPU stall time that triggers a notification within a two-second window. Used with CPUPressureWatch=. Accepts time units such as ms and us; the manager default is 200ms.",
+      "docJapanese": "2秒間の測定窓で通知を発生させるCPU待ち時間の閾値です。CPUPressureWatch= と併用します。ms や us などの時間単位を使え、マネージャーの既定値は 200ms です。",
+      "since": 261,
+      "example": "CPUPressureThresholdSec=200ms",
+      "manPage": "systemd.resource-control(5)"
     },
     {
       "section": "Slice",
       "name": "CPUPressureWatch",
       "parser": "config_parse_pressure_watch",
-      "valueKind": "string"
+      "valueKind": "enum",
+      "doc": "Configures CPU pressure notifications. auto enables monitoring when CPU resource controls are configured; skip leaves the notification environment untouched. The service must implement pressure handling.",
+      "docJapanese": "CPUの待ち時間に関する負荷通知を設定します。auto はCPUリソース制御がある場合に有効化し、skip は通知用環境変数を設定しません。通知を処理するにはサービス側の対応が必要です。",
+      "since": 261,
+      "example": "CPUPressureWatch=yes\nCPUPressureThresholdSec=200ms",
+      "manPage": "systemd.resource-control(5)",
+      "values": [
+        "true",
+        "false",
+        "yes",
+        "no",
+        "on",
+        "off",
+        "1",
+        "0",
+        "auto",
+        "skip"
+      ]
     },
     {
       "section": "Slice",
@@ -5302,7 +5647,17 @@
       "section": "Slice",
       "name": "CPUSetPartition",
       "parser": "config_parse_cpuset_partition",
-      "valueKind": "string"
+      "valueKind": "enum",
+      "doc": "Selects a cpuset partition: member for normal membership, root for a partition root, or isolated for CPU isolation. Also requires AllowedCPUs=; the kernel default is member.",
+      "docJapanese": "CPU集合の区分を指定します。member は通常の所属、root は区分のルート、isolated はCPUの分離です。AllowedCPUs= の指定も必要です。カーネルの既定値は member です。",
+      "since": 261,
+      "example": "AllowedCPUs=2-3\nCPUSetPartition=isolated",
+      "manPage": "systemd.resource-control(5)",
+      "values": [
+        "member",
+        "root",
+        "isolated"
+      ]
     },
     {
       "section": "Slice",
@@ -5431,13 +5786,35 @@
       "section": "Slice",
       "name": "IOPressureThresholdSec",
       "parser": "config_parse_sec",
-      "valueKind": "duration"
+      "valueKind": "duration",
+      "doc": "I/O stall time that triggers a notification within a two-second window. Used with IOPressureWatch=. Accepts time units such as ms and us; the manager default is 200ms.",
+      "docJapanese": "2秒間の測定窓で通知を発生させるI/O待ち時間の閾値です。IOPressureWatch= と併用します。ms や us などの時間単位を使え、マネージャーの既定値は 200ms です。",
+      "since": 261,
+      "example": "IOPressureThresholdSec=200ms",
+      "manPage": "systemd.resource-control(5)"
     },
     {
       "section": "Slice",
       "name": "IOPressureWatch",
       "parser": "config_parse_pressure_watch",
-      "valueKind": "string"
+      "valueKind": "enum",
+      "doc": "Configures I/O pressure notifications. auto enables monitoring when I/O accounting is enabled; skip leaves the notification environment untouched. The service must implement pressure handling.",
+      "docJapanese": "I/Oの待ち時間に関する負荷通知を設定します。auto はI/O使用量の集計が有効な場合に有効化し、skip は通知用環境変数を設定しません。通知を処理するにはサービス側の対応が必要です。",
+      "since": 261,
+      "example": "IOPressureWatch=yes\nIOPressureThresholdSec=200ms",
+      "manPage": "systemd.resource-control(5)",
+      "values": [
+        "true",
+        "false",
+        "yes",
+        "no",
+        "on",
+        "off",
+        "1",
+        "0",
+        "auto",
+        "skip"
+      ]
     },
     {
       "section": "Slice",
@@ -5976,19 +6353,42 @@
       "section": "Socket",
       "name": "CPUAffinity",
       "parser": "config_parse_exec_cpu_affinity",
-      "valueKind": "string"
+      "valueKind": "string",
+      "multiple": true
     },
     {
       "section": "Socket",
       "name": "CPUPressureThresholdSec",
       "parser": "config_parse_sec",
-      "valueKind": "duration"
+      "valueKind": "duration",
+      "doc": "CPU stall time that triggers a notification within a two-second window. Used with CPUPressureWatch=. Accepts time units such as ms and us; the manager default is 200ms.",
+      "docJapanese": "2秒間の測定窓で通知を発生させるCPU待ち時間の閾値です。CPUPressureWatch= と併用します。ms や us などの時間単位を使え、マネージャーの既定値は 200ms です。",
+      "since": 261,
+      "example": "CPUPressureThresholdSec=200ms",
+      "manPage": "systemd.resource-control(5)"
     },
     {
       "section": "Socket",
       "name": "CPUPressureWatch",
       "parser": "config_parse_pressure_watch",
-      "valueKind": "string"
+      "valueKind": "enum",
+      "doc": "Configures CPU pressure notifications. auto enables monitoring when CPU resource controls are configured; skip leaves the notification environment untouched. The service must implement pressure handling.",
+      "docJapanese": "CPUの待ち時間に関する負荷通知を設定します。auto はCPUリソース制御がある場合に有効化し、skip は通知用環境変数を設定しません。通知を処理するにはサービス側の対応が必要です。",
+      "since": 261,
+      "example": "CPUPressureWatch=yes\nCPUPressureThresholdSec=200ms",
+      "manPage": "systemd.resource-control(5)",
+      "values": [
+        "true",
+        "false",
+        "yes",
+        "no",
+        "on",
+        "off",
+        "1",
+        "0",
+        "auto",
+        "skip"
+      ]
     },
     {
       "section": "Socket",
@@ -6034,7 +6434,17 @@
       "section": "Socket",
       "name": "CPUSetPartition",
       "parser": "config_parse_cpuset_partition",
-      "valueKind": "string"
+      "valueKind": "enum",
+      "doc": "Selects a cpuset partition: member for normal membership, root for a partition root, or isolated for CPU isolation. Also requires AllowedCPUs=; the kernel default is member.",
+      "docJapanese": "CPU集合の区分を指定します。member は通常の所属、root は区分のルート、isolated はCPUの分離です。AllowedCPUs= の指定も必要です。カーネルの既定値は member です。",
+      "since": 261,
+      "example": "AllowedCPUs=2-3\nCPUSetPartition=isolated",
+      "manPage": "systemd.resource-control(5)",
+      "values": [
+        "member",
+        "root",
+        "isolated"
+      ]
     },
     {
       "section": "Socket",
@@ -6391,13 +6801,35 @@
       "section": "Socket",
       "name": "IOPressureThresholdSec",
       "parser": "config_parse_sec",
-      "valueKind": "duration"
+      "valueKind": "duration",
+      "doc": "I/O stall time that triggers a notification within a two-second window. Used with IOPressureWatch=. Accepts time units such as ms and us; the manager default is 200ms.",
+      "docJapanese": "2秒間の測定窓で通知を発生させるI/O待ち時間の閾値です。IOPressureWatch= と併用します。ms や us などの時間単位を使え、マネージャーの既定値は 200ms です。",
+      "since": 261,
+      "example": "IOPressureThresholdSec=200ms",
+      "manPage": "systemd.resource-control(5)"
     },
     {
       "section": "Socket",
       "name": "IOPressureWatch",
       "parser": "config_parse_pressure_watch",
-      "valueKind": "string"
+      "valueKind": "enum",
+      "doc": "Configures I/O pressure notifications. auto enables monitoring when I/O accounting is enabled; skip leaves the notification environment untouched. The service must implement pressure handling.",
+      "docJapanese": "I/Oの待ち時間に関する負荷通知を設定します。auto はI/O使用量の集計が有効な場合に有効化し、skip は通知用環境変数を設定しません。通知を処理するにはサービス側の対応が必要です。",
+      "since": 261,
+      "example": "IOPressureWatch=yes\nIOPressureThresholdSec=200ms",
+      "manPage": "systemd.resource-control(5)",
+      "values": [
+        "true",
+        "false",
+        "yes",
+        "no",
+        "on",
+        "off",
+        "1",
+        "0",
+        "auto",
+        "skip"
+      ]
     },
     {
       "section": "Socket",
@@ -7034,8 +7466,8 @@
     {
       "section": "Socket",
       "name": "MessageQueueMessageSize",
-      "parser": "config_parse_long",
-      "valueKind": "integer"
+      "parser": "config_parse_iec_size_long",
+      "valueKind": "size"
     },
     {
       "section": "Socket",
@@ -7084,7 +7516,21 @@
       "section": "Socket",
       "name": "NUMAPolicy",
       "parser": "config_parse_numa_policy",
-      "valueKind": "string"
+      "valueKind": "enum",
+      "doc": "Sets the NUMA memory policy; NUMAMask= selects nodes. preferred-many requires Linux 5.15+; weighted-interleave requires Linux 6.9+ and kernel-configured weights. Both new policies require systemd v262 (preview).",
+      "docJapanese": "NUMAメモリ配置方針です。対象ノードは NUMAMask= で指定します。preferred-many は Linux 5.15 以降、weighted-interleave は Linux 6.9 以降とカーネル側の重み設定が必要です。この2値は systemd v262 向けの先行対応です。",
+      "since": 243,
+      "example": "NUMAPolicy=bind\nNUMAMask=0",
+      "manPage": "systemd.exec(5)",
+      "values": [
+        "default",
+        "preferred",
+        "bind",
+        "interleave",
+        "local",
+        "preferred-many",
+        "weighted-interleave"
+      ]
     },
     {
       "section": "Socket",
@@ -7360,7 +7806,26 @@
       "section": "Socket",
       "name": "PrivateUsers",
       "parser": "config_parse_private_users",
-      "valueKind": "string"
+      "valueKind": "enum",
+      "doc": "Creates a user namespace. self maps root and the service user; identity maps the first 65536 IDs; managed allocates an ID range; full maps the entire UID/GID range (v258+).",
+      "docJapanese": "ユーザー名前空間を作成します。self は root とサービスのユーザー、identity は先頭65536個のID、managed は動的に割り当てたID範囲、full はUID/GID全域をマッピングします（full は v258 以降）。",
+      "since": 232,
+      "example": "PrivateUsers=yes",
+      "manPage": "systemd.exec(5)",
+      "values": [
+        "true",
+        "false",
+        "yes",
+        "no",
+        "on",
+        "off",
+        "1",
+        "0",
+        "self",
+        "identity",
+        "managed",
+        "full"
+      ]
     },
     {
       "section": "Socket",
@@ -7717,8 +8182,27 @@
       "section": "Socket",
       "name": "SecureBits",
       "parser": "config_parse_exec_secure_bits",
-      "valueKind": "duration",
-      "multiple": true
+      "valueKind": "enum-list",
+      "doc": "Space-separated securebits flags. Repeated assignments combine flags; an empty assignment resets them. no-cap-ambient-raise, exec-restrict-file, exec-deny-interactive and their locked variants are v262 preview additions.",
+      "docJapanese": "securebits フラグを空白区切りで指定します。複数回の代入はフラグを結合し、空の代入でリセットします。no-cap-ambient-raise、exec-restrict-file、exec-deny-interactive と各 locked 版は v262 向けの先行対応です。",
+      "syntax": "SecureBits=\u003cflag\u003e ...",
+      "example": "SecureBits=keep-caps no-setuid-fixup",
+      "manPage": "systemd.exec(5)",
+      "multiple": true,
+      "values": [
+        "keep-caps",
+        "keep-caps-locked",
+        "no-setuid-fixup",
+        "no-setuid-fixup-locked",
+        "noroot",
+        "noroot-locked",
+        "no-cap-ambient-raise",
+        "no-cap-ambient-raise-locked",
+        "exec-restrict-file",
+        "exec-restrict-file-locked",
+        "exec-deny-interactive",
+        "exec-deny-interactive-locked"
+      ]
     },
     {
       "section": "Socket",
@@ -8465,19 +8949,42 @@
       "section": "Swap",
       "name": "CPUAffinity",
       "parser": "config_parse_exec_cpu_affinity",
-      "valueKind": "string"
+      "valueKind": "string",
+      "multiple": true
     },
     {
       "section": "Swap",
       "name": "CPUPressureThresholdSec",
       "parser": "config_parse_sec",
-      "valueKind": "duration"
+      "valueKind": "duration",
+      "doc": "CPU stall time that triggers a notification within a two-second window. Used with CPUPressureWatch=. Accepts time units such as ms and us; the manager default is 200ms.",
+      "docJapanese": "2秒間の測定窓で通知を発生させるCPU待ち時間の閾値です。CPUPressureWatch= と併用します。ms や us などの時間単位を使え、マネージャーの既定値は 200ms です。",
+      "since": 261,
+      "example": "CPUPressureThresholdSec=200ms",
+      "manPage": "systemd.resource-control(5)"
     },
     {
       "section": "Swap",
       "name": "CPUPressureWatch",
       "parser": "config_parse_pressure_watch",
-      "valueKind": "string"
+      "valueKind": "enum",
+      "doc": "Configures CPU pressure notifications. auto enables monitoring when CPU resource controls are configured; skip leaves the notification environment untouched. The service must implement pressure handling.",
+      "docJapanese": "CPUの待ち時間に関する負荷通知を設定します。auto はCPUリソース制御がある場合に有効化し、skip は通知用環境変数を設定しません。通知を処理するにはサービス側の対応が必要です。",
+      "since": 261,
+      "example": "CPUPressureWatch=yes\nCPUPressureThresholdSec=200ms",
+      "manPage": "systemd.resource-control(5)",
+      "values": [
+        "true",
+        "false",
+        "yes",
+        "no",
+        "on",
+        "off",
+        "1",
+        "0",
+        "auto",
+        "skip"
+      ]
     },
     {
       "section": "Swap",
@@ -8523,7 +9030,17 @@
       "section": "Swap",
       "name": "CPUSetPartition",
       "parser": "config_parse_cpuset_partition",
-      "valueKind": "string"
+      "valueKind": "enum",
+      "doc": "Selects a cpuset partition: member for normal membership, root for a partition root, or isolated for CPU isolation. Also requires AllowedCPUs=; the kernel default is member.",
+      "docJapanese": "CPU集合の区分を指定します。member は通常の所属、root は区分のルート、isolated はCPUの分離です。AllowedCPUs= の指定も必要です。カーネルの既定値は member です。",
+      "since": 261,
+      "example": "AllowedCPUs=2-3\nCPUSetPartition=isolated",
+      "manPage": "systemd.resource-control(5)",
+      "values": [
+        "member",
+        "root",
+        "isolated"
+      ]
     },
     {
       "section": "Swap",
@@ -8790,13 +9307,35 @@
       "section": "Swap",
       "name": "IOPressureThresholdSec",
       "parser": "config_parse_sec",
-      "valueKind": "duration"
+      "valueKind": "duration",
+      "doc": "I/O stall time that triggers a notification within a two-second window. Used with IOPressureWatch=. Accepts time units such as ms and us; the manager default is 200ms.",
+      "docJapanese": "2秒間の測定窓で通知を発生させるI/O待ち時間の閾値です。IOPressureWatch= と併用します。ms や us などの時間単位を使え、マネージャーの既定値は 200ms です。",
+      "since": 261,
+      "example": "IOPressureThresholdSec=200ms",
+      "manPage": "systemd.resource-control(5)"
     },
     {
       "section": "Swap",
       "name": "IOPressureWatch",
       "parser": "config_parse_pressure_watch",
-      "valueKind": "string"
+      "valueKind": "enum",
+      "doc": "Configures I/O pressure notifications. auto enables monitoring when I/O accounting is enabled; skip leaves the notification environment untouched. The service must implement pressure handling.",
+      "docJapanese": "I/Oの待ち時間に関する負荷通知を設定します。auto はI/O使用量の集計が有効な場合に有効化し、skip は通知用環境変数を設定しません。通知を処理するにはサービス側の対応が必要です。",
+      "since": 261,
+      "example": "IOPressureWatch=yes\nIOPressureThresholdSec=200ms",
+      "manPage": "systemd.resource-control(5)",
+      "values": [
+        "true",
+        "false",
+        "yes",
+        "no",
+        "on",
+        "off",
+        "1",
+        "0",
+        "auto",
+        "skip"
+      ]
     },
     {
       "section": "Swap",
@@ -9359,7 +9898,21 @@
       "section": "Swap",
       "name": "NUMAPolicy",
       "parser": "config_parse_numa_policy",
-      "valueKind": "string"
+      "valueKind": "enum",
+      "doc": "Sets the NUMA memory policy; NUMAMask= selects nodes. preferred-many requires Linux 5.15+; weighted-interleave requires Linux 6.9+ and kernel-configured weights. Both new policies require systemd v262 (preview).",
+      "docJapanese": "NUMAメモリ配置方針です。対象ノードは NUMAMask= で指定します。preferred-many は Linux 5.15 以降、weighted-interleave は Linux 6.9 以降とカーネル側の重み設定が必要です。この2値は systemd v262 向けの先行対応です。",
+      "since": 243,
+      "example": "NUMAPolicy=bind\nNUMAMask=0",
+      "manPage": "systemd.exec(5)",
+      "values": [
+        "default",
+        "preferred",
+        "bind",
+        "interleave",
+        "local",
+        "preferred-many",
+        "weighted-interleave"
+      ]
     },
     {
       "section": "Swap",
@@ -9527,7 +10080,26 @@
       "section": "Swap",
       "name": "PrivateUsers",
       "parser": "config_parse_private_users",
-      "valueKind": "string"
+      "valueKind": "enum",
+      "doc": "Creates a user namespace. self maps root and the service user; identity maps the first 65536 IDs; managed allocates an ID range; full maps the entire UID/GID range (v258+).",
+      "docJapanese": "ユーザー名前空間を作成します。self は root とサービスのユーザー、identity は先頭65536個のID、managed は動的に割り当てたID範囲、full はUID/GID全域をマッピングします（full は v258 以降）。",
+      "since": 232,
+      "example": "PrivateUsers=yes",
+      "manPage": "systemd.exec(5)",
+      "values": [
+        "true",
+        "false",
+        "yes",
+        "no",
+        "on",
+        "off",
+        "1",
+        "0",
+        "self",
+        "identity",
+        "managed",
+        "full"
+      ]
     },
     {
       "section": "Swap",
@@ -9830,8 +10402,27 @@
       "section": "Swap",
       "name": "SecureBits",
       "parser": "config_parse_exec_secure_bits",
-      "valueKind": "duration",
-      "multiple": true
+      "valueKind": "enum-list",
+      "doc": "Space-separated securebits flags. Repeated assignments combine flags; an empty assignment resets them. no-cap-ambient-raise, exec-restrict-file, exec-deny-interactive and their locked variants are v262 preview additions.",
+      "docJapanese": "securebits フラグを空白区切りで指定します。複数回の代入はフラグを結合し、空の代入でリセットします。no-cap-ambient-raise、exec-restrict-file、exec-deny-interactive と各 locked 版は v262 向けの先行対応です。",
+      "syntax": "SecureBits=\u003cflag\u003e ...",
+      "example": "SecureBits=keep-caps no-setuid-fixup",
+      "manPage": "systemd.exec(5)",
+      "multiple": true,
+      "values": [
+        "keep-caps",
+        "keep-caps-locked",
+        "no-setuid-fixup",
+        "no-setuid-fixup-locked",
+        "noroot",
+        "noroot-locked",
+        "no-cap-ambient-raise",
+        "no-cap-ambient-raise-locked",
+        "exec-restrict-file",
+        "exec-restrict-file-locked",
+        "exec-deny-interactive",
+        "exec-deny-interactive-locked"
+      ]
     },
     {
       "section": "Swap",
@@ -10608,7 +11199,14 @@
       "section": "Unit",
       "name": "AssertFraction",
       "parser": "config_parse_unit_condition_string",
-      "valueKind": "condition",
+      "valueKind": "fraction",
+      "doc": "Selects a stable fraction of machines using the machine ID. Specify an optional rollout tag and a percentage from 0% to 100%, with up to two decimal places. | makes a trigger condition and ! negates the match.",
+      "docJapanese": "マシンIDから決まる一定割合のマシンで実行する条件です。任意の配備タグと、0%〜100%（小数点以下2桁まで）を指定します。| はトリガー条件、! は条件の反転です。",
+      "since": 261,
+      "snippet": "AssertFraction=${1:rollout} ${2:10}%$0",
+      "syntax": "AssertFraction=[|][!][tag ]percentage%",
+      "example": "AssertFraction=rollout 10%",
+      "manPage": "systemd.unit(5)",
       "multiple": true
     },
     {
@@ -10658,6 +11256,13 @@
       "name": "AssertMachineTag",
       "parser": "config_parse_unit_condition_string",
       "valueKind": "condition",
+      "doc": "Matches a machine-info TAGS entry using shell-style globbing (*, ?, []). A leading ! negates the match; | makes a trigger condition.",
+      "docJapanese": "machine-info の TAGS にあるタグを照合します。*、?、[] のパターンを使えます。先頭の ! は条件の反転、| はトリガー条件です。",
+      "since": 261,
+      "snippet": "AssertMachineTag=${1:production-*}$0",
+      "syntax": "AssertMachineTag=[|][!]pattern",
+      "example": "AssertMachineTag=production-*",
+      "manPage": "systemd.unit(5)",
       "multiple": true
     },
     {
@@ -10905,7 +11510,14 @@
       "section": "Unit",
       "name": "ConditionFraction",
       "parser": "config_parse_unit_condition_string",
-      "valueKind": "condition",
+      "valueKind": "fraction",
+      "doc": "Selects a stable fraction of machines using the machine ID. Specify an optional rollout tag and a percentage from 0% to 100%, with up to two decimal places. | makes a trigger condition and ! negates the match.",
+      "docJapanese": "マシンIDから決まる一定割合のマシンで実行する条件です。任意の配備タグと、0%〜100%（小数点以下2桁まで）を指定します。| はトリガー条件、! は条件の反転です。",
+      "since": 261,
+      "snippet": "ConditionFraction=${1:rollout} ${2:10}%$0",
+      "syntax": "ConditionFraction=[|][!][tag ]percentage%",
+      "example": "ConditionFraction=rollout 10%",
+      "manPage": "systemd.unit(5)",
       "multiple": true
     },
     {
@@ -10955,6 +11567,13 @@
       "name": "ConditionMachineTag",
       "parser": "config_parse_unit_condition_string",
       "valueKind": "condition",
+      "doc": "Matches a machine-info TAGS entry using shell-style globbing (*, ?, []). A leading ! negates the match; | makes a trigger condition.",
+      "docJapanese": "machine-info の TAGS にあるタグを照合します。*、?、[] のパターンを使えます。先頭の ! は条件の反転、| はトリガー条件です。",
+      "since": 261,
+      "snippet": "ConditionMachineTag=${1:production-*}$0",
+      "syntax": "ConditionMachineTag=[|][!]pattern",
+      "example": "ConditionMachineTag=production-*",
+      "manPage": "systemd.unit(5)",
       "multiple": true
     },
     {

@@ -2,7 +2,8 @@ package systemd
 
 import (
 	"bufio"
-	"encoding/json"
+	"encoding/json/jsontext"
+	"encoding/json/v2"
 	"io"
 	"os"
 	"regexp"
@@ -17,16 +18,19 @@ type CatalogFile struct {
 }
 
 type CatalogDirective struct {
-	Section   string   `json:"section"`
-	Name      string   `json:"name"`
-	Parser    string   `json:"parser,omitempty"`
-	ValueKind string   `json:"valueKind,omitempty"`
-	Doc       string   `json:"doc,omitempty"`
-	Syntax    string   `json:"syntax,omitempty"`
-	Example   string   `json:"example,omitempty"`
-	ManPage   string   `json:"manPage,omitempty"`
-	Multiple  bool     `json:"multiple,omitempty"`
-	Values    []string `json:"values,omitempty"`
+	Section     string   `json:"section"`
+	Name        string   `json:"name"`
+	Parser      string   `json:"parser,omitempty"`
+	ValueKind   string   `json:"valueKind,omitempty"`
+	Doc         string   `json:"doc,omitempty"`
+	DocJapanese string   `json:"docJapanese,omitempty"`
+	Since       int      `json:"since,omitzero"`
+	Snippet     string   `json:"snippet,omitempty"`
+	Syntax      string   `json:"syntax,omitempty"`
+	Example     string   `json:"example,omitempty"`
+	ManPage     string   `json:"manPage,omitempty"`
+	Multiple    bool     `json:"multiple,omitzero"`
+	Values      []string `json:"values,omitempty"`
 }
 
 func LoadCatalogFile(path string) (CatalogFile, error) {
@@ -40,16 +44,18 @@ func LoadCatalogFile(path string) (CatalogFile, error) {
 
 func DecodeCatalogFile(r io.Reader) (CatalogFile, error) {
 	var file CatalogFile
-	if err := json.NewDecoder(r).Decode(&file); err != nil {
+	// A catalog contains exactly one JSON value, including no trailing data.
+	if err := json.UnmarshalRead(r, &file); err != nil {
 		return CatalogFile{}, err
 	}
 	return file, nil
 }
 
 func EncodeCatalogFile(w io.Writer, file CatalogFile) error {
-	enc := json.NewEncoder(w)
-	enc.SetIndent("", "  ")
-	return enc.Encode(file)
+	// Keep generated catalogs byte-stable: indentation, escapes and a final
+	// newline match existing catalog files. Decoding uses strict v2 defaults.
+	enc := jsontext.NewEncoder(w, jsontext.WithIndent("  "), jsontext.EscapeForHTML(true), jsontext.EscapeForJS(true))
+	return json.MarshalEncode(enc, file, json.Deterministic(true))
 }
 
 func ParseLoadFragmentGperf(r io.Reader) (CatalogFile, error) {
@@ -90,15 +96,18 @@ func ParseLoadFragmentGperf(r io.Reader) (CatalogFile, error) {
 
 func (d CatalogDirective) directive() Directive {
 	return Directive{
-		Name:      d.Name,
-		Doc:       d.Doc,
-		Parser:    d.Parser,
-		ValueKind: d.ValueKind,
-		Syntax:    d.Syntax,
-		Example:   d.Example,
-		ManPage:   d.ManPage,
-		Multiple:  d.Multiple,
-		Values:    d.Values,
+		Name:        d.Name,
+		Doc:         d.Doc,
+		DocJapanese: d.DocJapanese,
+		Since:       d.Since,
+		Snippet:     d.Snippet,
+		Parser:      d.Parser,
+		ValueKind:   d.ValueKind,
+		Syntax:      d.Syntax,
+		Example:     d.Example,
+		ManPage:     d.ManPage,
+		Multiple:    d.Multiple,
+		Values:      d.Values,
 	}
 }
 
@@ -246,7 +255,7 @@ func inferMultiple(parser, name string) bool {
 		return true
 	}
 	switch name {
-	case "Documentation", "Environment", "EnvironmentFile", "PassEnvironment", "UnsetEnvironment",
+	case "Documentation", "Environment", "EnvironmentFile", "PassEnvironment", "UnsetEnvironment", "CPUAffinity",
 		"SupplementaryGroups", "LogExtraFields", "LogFilterPatterns", "CapabilityBoundingSet",
 		"AmbientCapabilities", "SecureBits", "DeviceAllow", "IPAddressAllow", "IPAddressDeny",
 		"SocketBindAllow", "SocketBindDeny", "DisableControllers", "ReadWritePaths", "ReadOnlyPaths",
@@ -319,6 +328,8 @@ func inferValues(section, parser, name string) []string {
 
 func inferValueKind(parser, name string) string {
 	switch {
+	case name == "SecureBits":
+		return "enum-list"
 	case parser == "NULL":
 		return "install"
 	case parser == "config_parse_bool":

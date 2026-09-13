@@ -94,3 +94,20 @@ func TestEnrichCatalogWithManDocsPrefersSectionPage(t *testing.T) {
 		t.Fatalf("Automount Where doc = %q", file.Directives[1].Doc)
 	}
 }
+
+func TestManXMLIntroductionVersion(t *testing.T) {
+	source := `<refentry xmlns:xi="http://www.w3.org/2001/XInclude"><variablelist>
+<varlistentry><term><varname>CPUSetPartition=</varname></term><listitem>
+<para>Partition type.</para>
+<itemizedlist><listitem><para>Related older feature.</para><xi:include href="version-info.xml" xpointer="v230"/></listitem></itemizedlist>
+<xi:include href="version-info.xml" xpointer="v261"/>
+</listitem></varlistentry></variablelist></refentry>`
+	docs, err := ParseManXMLDocs(strings.NewReader(source), "systemd.resource-control.xml")
+	if err != nil {
+		t.Fatal(err)
+	}
+	file := EnrichCatalogWithManDocs(CatalogFile{Directives: []CatalogDirective{{Section: "Service", Name: "CPUSetPartition"}}}, docs)
+	if file.Directives[0].Since != 261 {
+		t.Fatalf("lost introduction version: %#v", file)
+	}
+}

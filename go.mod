@@ -1,3 +1,3 @@
 module github.com/zyosaidouki/systemd-lsp
 
-go 1.26.0
+go 1.27.0

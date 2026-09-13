@@ -16,6 +16,7 @@ type ManDirectiveDoc struct {
 	Syntax  string
 	Example string
 	ManPage string
+	Since   int
 }
 
 type ManDirectiveDocs map[string][]ManDirectiveDoc
@@ -72,6 +73,9 @@ func EnrichCatalogWithManDocs(file CatalogFile, docs ManDirectiveDocs) CatalogFi
 		if file.Directives[i].ManPage == "" {
 			file.Directives[i].ManPage = doc.ManPage
 		}
+		if file.Directives[i].Since == 0 {
+			file.Directives[i].Since = doc.Since
+		}
 	}
 	return file
 }
@@ -96,12 +100,29 @@ func ParseManXMLDocs(r io.Reader, filename string) (ManDirectiveDocs, error) {
 			name := tok.Name.Local
 			stack = append(stack, name)
 			if name == "varlistentry" {
-				entry = &manEntry{ManPage: page}
+				entry = &manEntry{ManPage: page, depth: len(stack)}
 			}
 			if entry == nil {
 				continue
 			}
 			switch name {
+			case "include":
+				// Only the version marker directly in the entry's listitem
+				// describes its introduction, not markers in nested examples.
+				if len(stack) == entry.depth+2 && stack[len(stack)-2] == "listitem" {
+					var href, pointer string
+					for _, attr := range tok.Attr {
+						if attr.Name.Local == "href" {
+							href = attr.Value
+						}
+						if attr.Name.Local == "xpointer" {
+							pointer = attr.Value
+						}
+					}
+					if version := majorVersion(pointer); href == "version-info.xml" && version > 0 && (entry.Since == 0 || version < entry.Since) {
+						entry.Since = version
+					}
+				}
 			case "term":
 				entry.inTerm = true
 				entry.term.Reset()
@@ -210,6 +231,8 @@ func preferredManPages(section string) []string {
 }
 
 type manEntry struct {
+	depth            int
+	Since            int
 	Names            []string
 	Syntax           map[string]string
 	Doc              string
@@ -253,6 +276,7 @@ func (e *manEntry) docs() []ManDirectiveDoc {
 			Syntax:  e.Syntax[name],
 			Example: e.exampleFor(name),
 			ManPage: e.ManPage,
+			Since:   e.Since,
 		})
 	}
 	return result

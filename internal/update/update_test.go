@@ -5,7 +5,7 @@ import (
 	"bytes"
 	"compress/gzip"
 	"crypto/sha256"
-	"encoding/json"
+	"encoding/json/v2"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
@@ -87,7 +87,9 @@ func TestInstall(t *testing.T) {
 					if scenario != "missing" {
 						assets = append(assets, map[string]string{"name": "SHA256SUMS", "browser_download_url": server.URL + "/sums"})
 					}
-					json.NewEncoder(w).Encode(map[string]any{"tag_name": "build-42-1", "assets": assets})
+					if err := json.MarshalWrite(w, map[string]any{"tag_name": "build-42-1", "assets": assets}); err != nil {
+						t.Errorf("encode release metadata: %v", err)
+					}
 				case "/sums":
 					fmt.Fprintf(w, "%s  %s\n", digest, name)
 				case "/archive":
@@ -137,6 +139,29 @@ func TestInstall(t *testing.T) {
 func TestUnsupportedPlatform(t *testing.T) {
 	if _, err := install(nil, "", "", "linux", "arm64"); err == nil {
 		t.Fatal("expected unsupported platform error")
+	}
+}
+
+func TestInstallRejectsInvalidJSONMetadata(t *testing.T) {
+	for _, metadata := range []string{
+		`{"tag_name":"first","tag_name":"second","assets":[]}`,
+		"{\"tag_name\":\"\xff\",\"assets\":[]}",
+		`{"tag_name":"build-42","assets":[]} {}`,
+	} {
+		target := filepath.Join(t.TempDir(), "systemd-lsp")
+		if err := os.WriteFile(target, []byte("original"), 0755); err != nil {
+			t.Fatal(err)
+		}
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { fmt.Fprint(w, metadata) }))
+		_, err := install(server.Client(), server.URL, target, "linux", "amd64")
+		server.Close()
+		if err == nil || !strings.Contains(err.Error(), "release metadata:") {
+			t.Fatalf("expected metadata parse error, got %v", err)
+		}
+		data, readErr := os.ReadFile(target)
+		if readErr != nil || string(data) != "original" {
+			t.Fatalf("invalid metadata modified the executable: %q, %v", data, readErr)
+		}
 	}
 }
 

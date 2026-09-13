@@ -39,6 +39,7 @@ func main() {
 			log.Fatal(err)
 		}
 	}
+	catalog = systemd.EnrichCatalogFeatures(catalog)
 	if err := systemd.EncodeCatalogFile(os.Stdout, catalog); err != nil {
 		log.Fatal(err)
 	}

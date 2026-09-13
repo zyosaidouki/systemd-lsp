@@ -262,6 +262,26 @@ let g:systemd_lsp_catalog_path = '/path/to/catalog.json'
 - セクションとディレクティブのドキュメントシンボル
 - 空の単独 `.service` ファイルへのテンプレート挿入。ドロップインや他のユニット種別には自動挿入しません
 
+### 新しい systemd 設定への対応
+
+内蔵カタログは [systemd v262-rc2](https://github.com/systemd/systemd/releases/tag/v262-rc2) の
+パーサーから生成しています。v262 の項目は先行対応です。
+
+- `PrivateUsers=full` を正しい値として扱い、対象バージョンに合う値を補完します。
+- `CPUSetPartition=`、`CPUPressureWatch=`、`IOPressureWatch=`、`FileDescriptorStorePreserve=` に値補完と日本語・英語の説明を提供します。
+- `RefreshOnReload=` と `SecureBits=` は空白区切りの次の値を補完します。`RefreshOnReload=~extensions credentials` の反転指定にも対応します。
+- `ConditionFraction=`／`AssertFraction=`、`ConditionMachineTag=`／`AssertMachineTag=` に編集可能なスニペットを提供します。スニペット非対応クライアントでは通常の `キー=` を挿入します。
+- 配備割合の範囲・小数桁数、列挙値、`ActivatingConcurrencyMax=` の数値を検証します。`CPUSetPartition=` に必要な `AllowedCPUs=` が同じ文書にない場合はヒントを表示します。
+- `RestartRandomizedDelaySec=`、`ActivatingConcurrencyMax=`、`NUMAPolicy=` と `SecureBits=` の新しい値に v262 向けの説明を提供します。
+
+診断は開いている文書内の静的な検証です。他のユニットファイルやドロップインの統合、
+実行先のカーネル機能の検出は行いません。
+
+外部カタログに `version` がある場合、そのカタログのディレクティブ一覧で内蔵一覧を置き換えます。
+既知の値の追加バージョンも考慮するため、例えば v260 向けでは
+`FileDescriptorStorePreserve=on-success` を補完せず、入力時に警告します。
+`version` のない外部カタログは追加・上書き用として扱います。
+
 ## 対応する拡張子
 
 次の拡張子が `systemd` ファイルタイプとして検出されると、エディタが `systemd-lsp` を起動します。
@@ -289,7 +309,7 @@ let g:systemd_lsp_catalog_path = '/path/to/catalog.json'
 
 ## 開発
 
-ソースからのビルドは任意で、Go 1.26 以降が必要です。
+ソースからのビルドは任意で、Go 1.27 以降が必要です。
 プラグイン管理の実行ファイルをローカルでビルドするには、次を実行します。
 
 ```sh
@@ -300,6 +320,11 @@ go build -o bin/systemd-lsp ./cmd/systemd-lsp
 その他の LSP クライアントでは、手動ダウンロードしたリリースやソースからビルドした実行ファイルを使用できます。
 単独の実行ファイルでは引き続き `systemd-lsp update` を利用できます。
 エディタプラグインの利用者は `:SystemdLspUpdate` を使用してください。
+
+JSON の処理には Go 1.27 の `encoding/json/v2` を使用します。
+入力は有効な UTF-8 とし、オブジェクト内のキーの重複を認めず、フィールド名の大文字・小文字を区別します。
+カタログファイルには JSON 値を 1 つだけ記述してください。
+生成カタログの整形形式と、LSP 応答で必要な `null` の結果や空配列は維持します。
 
 GitHub Actions は `main` への push と同一リポジトリからのプルリクエストに対して、
 Linux x64 の self-hosted runner でテスト、`go vet`、ビルドを実行します。
@@ -365,6 +390,9 @@ SYSTEMD_LSP_CATALOG=/tmp/systemd-v258-catalog.json go run ./cmd/systemd-lsp
 `CGROUP_CONTEXT_CONFIG_ITEMS`、`KILL_CONTEXT_CONFIG_ITEMS` のマクロ呼び出しを展開します。
 その後、セクション、ディレクティブ、パーサー関数、推定した値の種類、構文、使用例、man ページ、
 判明している選択肢、および複数回の代入が通常想定されるかどうかを含む JSON を出力します。
+
+man XML の導入バージョンを `since` として取り込みます。対応する新機能には
+日本語説明、スニペット、バージョン別の値候補も追加します。
 
 チェッカーはカタログの統計を表示し、セクション・ディレクティブの重複、空の名前、
 指定した最小件数を下回るディレクティブ数など、明らかな問題があれば失敗として終了します。

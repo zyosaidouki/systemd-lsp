@@ -1,7 +1,8 @@
 package lsp
 
 import (
-	"encoding/json"
+	"encoding/json/jsontext"
+	"encoding/json/v2"
 	"fmt"
 	"log"
 	"path"
@@ -30,12 +31,12 @@ func NewServer(catalog *systemd.Catalog, logger *log.Logger) *Server {
 }
 
 type rpcMessage struct {
-	JSONRPC string          `json:"jsonrpc"`
-	ID      json.RawMessage `json:"id,omitempty"`
-	Method  string          `json:"method,omitempty"`
-	Params  json.RawMessage `json:"params,omitempty"`
-	Result  json.RawMessage `json:"result,omitempty"`
-	Error   *rpcError       `json:"error,omitempty"`
+	JSONRPC string         `json:"jsonrpc"`
+	ID      jsontext.Value `json:"id,omitzero"`
+	Method  string         `json:"method,omitempty"`
+	Params  jsontext.Value `json:"params,omitzero"`
+	Result  jsontext.Value `json:"result,omitzero"`
+	Error   *rpcError      `json:"error,omitzero"`
 }
 
 type rpcError struct {
@@ -43,7 +44,17 @@ type rpcError struct {
 	Message string `json:"message"`
 }
 
-func (s *Server) Handle(payload json.RawMessage) [][]byte {
+// Responses always contain id (null when it could not be determined). A
+// non-nil raw result must be retained even when it encodes null, [] or {}.
+// v2's omitempty would omit those JSON values; omitzero only omits a nil Value.
+type rpcResponse struct {
+	JSONRPC string         `json:"jsonrpc"`
+	ID      jsontext.Value `json:"id"`
+	Result  jsontext.Value `json:"result,omitzero"`
+	Error   *rpcError      `json:"error,omitzero"`
+}
+
+func (s *Server) Handle(payload jsontext.Value) [][]byte {
 	var msg rpcMessage
 	if err := json.Unmarshal(payload, &msg); err != nil {
 		return [][]byte{encodeResponse(nil, nil, &rpcError{Code: -32700, Message: err.Error()})}
@@ -62,7 +73,7 @@ func (s *Server) Handle(payload json.RawMessage) [][]byte {
 	return [][]byte{encodeResponse(msg.ID, result, nil)}
 }
 
-func (s *Server) dispatch(method string, params json.RawMessage) (any, [][]byte, error) {
+func (s *Server) dispatch(method string, params jsontext.Value) (any, [][]byte, error) {
 	switch method {
 	case "initialize":
 		s.configure(params)
@@ -103,7 +114,7 @@ func (s *Server) dispatch(method string, params json.RawMessage) (any, [][]byte,
 	case "textDocument/didSave":
 		var p struct {
 			TextDocument TextDocumentIdentifier `json:"textDocument"`
-			Text         *string                `json:"text,omitempty"`
+			Text         *string                `json:"text,omitzero"`
 		}
 		if err := json.Unmarshal(params, &p); err != nil {
 			return nil, nil, err
@@ -152,7 +163,7 @@ func (s *Server) dispatch(method string, params json.RawMessage) (any, [][]byte,
 	}
 }
 
-func (s *Server) configure(params json.RawMessage) {
+func (s *Server) configure(params jsontext.Value) {
 	var p struct {
 		Locale       string `json:"locale,omitempty"`
 		CatalogPath  string `json:"catalogPath,omitempty"`
@@ -160,7 +171,7 @@ func (s *Server) configure(params json.RawMessage) {
 			TextDocument struct {
 				Completion struct {
 					CompletionItem struct {
-						SnippetSupport bool `json:"snippetSupport,omitempty"`
+						SnippetSupport bool `json:"snippetSupport,omitzero"`
 					} `json:"completionItem,omitempty"`
 				} `json:"completion,omitempty"`
 			} `json:"textDocument,omitempty"`
@@ -222,7 +233,7 @@ func shouldInsertServiceTemplate(uri, text string) bool {
 
 func (s *Server) applyEditRequest(uri, newText string) []byte {
 	s.nextRequestID++
-	id := json.RawMessage(fmt.Sprintf("%d", s.nextRequestID))
+	id := jsontext.Value(fmt.Sprintf("%d", s.nextRequestID))
 	params := map[string]any{
 		"label": "Insert systemd service template",
 		"edit": map[string]any{
@@ -241,7 +252,7 @@ func (s *Server) applyEditRequest(uri, newText string) []byte {
 	}
 	raw, err := json.Marshal(params)
 	if err != nil {
-		raw = json.RawMessage("null")
+		raw = jsontext.Value("null")
 	}
 	payload, _ := json.Marshal(rpcMessage{
 		JSONRPC: "2.0",
@@ -267,7 +278,7 @@ func (s *Server) initialize() map[string]any {
 				},
 			},
 			"completionProvider": map[string]any{
-				"triggerCharacters": []string{"[", "="},
+				"triggerCharacters": []string{"[", "=", " ", "~"},
 			},
 			"hoverProvider":          true,
 			"documentSymbolProvider": true,
@@ -315,9 +326,9 @@ func (s *Server) completion(p TextDocumentPositionParams) any {
 		return items
 	}
 
-	if key, value, hasEquals := strings.Cut(trimmed, "="); hasEquals {
+	if key, value, hasEquals := strings.Cut(before, "="); hasEquals {
 		section := sectionAt(s.catalog, doc, p.Position.Line)
-		return s.valueCompletions(section, strings.TrimSpace(key), strings.TrimSpace(value))
+		return s.valueCompletions(section, strings.TrimSpace(key), value, line, p.Position)
 	}
 
 	section := sectionAt(s.catalog, doc, p.Position.Line)
@@ -328,6 +339,9 @@ func (s *Server) completion(p TextDocumentPositionParams) any {
 	items := make([]CompletionItem, 0, len(directives))
 	for _, directive := range directives {
 		insertText, insertTextFormat := s.completionInsertText(directive.Name + "=")
+		if s.snippetSupport && directive.Snippet != "" {
+			insertText = directive.Snippet
+		}
 		items = append(items, CompletionItem{
 			Label:            directive.Name,
 			Kind:             CompletionItemKindField,
@@ -345,26 +359,6 @@ func (s *Server) completionInsertText(text string) (string, int) {
 		return text + "$0", InsertTextFormatSnippet
 	}
 	return text, InsertTextFormatPlainText
-}
-
-func (s *Server) valueCompletions(section, key, prefix string) []CompletionItem {
-	values := s.catalog.ValuesFor(section, key)
-	if len(values) == 0 {
-		return []CompletionItem{}
-	}
-	items := make([]CompletionItem, 0, len(values))
-	for _, value := range values {
-		if prefix != "" && !strings.HasPrefix(strings.ToLower(value), strings.ToLower(prefix)) {
-			continue
-		}
-		items = append(items, CompletionItem{
-			Label:      value,
-			Kind:       CompletionItemKindValue,
-			Detail:     s.localizedValueDetail(key),
-			InsertText: value,
-		})
-	}
-	return items
 }
 
 func (s *Server) hover(p TextDocumentPositionParams) any {
@@ -457,11 +451,11 @@ func (s *Server) documentSymbols(uri string) []DocumentSymbol {
 	return symbols
 }
 
-func encodeResponse(id json.RawMessage, result any, rpcErr *rpcError) []byte {
-	response := rpcMessage{JSONRPC: "2.0", ID: id, Error: rpcErr}
+func encodeResponse(id jsontext.Value, result any, rpcErr *rpcError) []byte {
+	response := rpcResponse{JSONRPC: "2.0", ID: id, Error: rpcErr}
 	if rpcErr == nil {
 		if result == nil {
-			response.Result = json.RawMessage("null")
+			response.Result = jsontext.Value("null")
 		} else {
 			raw, err := json.Marshal(result)
 			if err != nil {
@@ -478,7 +472,7 @@ func encodeResponse(id json.RawMessage, result any, rpcErr *rpcError) []byte {
 func notification(method string, params any) []byte {
 	raw, err := json.Marshal(params)
 	if err != nil {
-		raw = json.RawMessage("null")
+		raw = jsontext.Value("null")
 	}
 	payload, _ := json.Marshal(rpcMessage{
 		JSONRPC: "2.0",
@@ -512,14 +506,18 @@ func lineAt(text string, lineNo int) string {
 }
 
 func prefixAt(line string, character int) string {
-	if character < 0 {
-		return ""
+	units := 0
+	for offset, r := range line {
+		width := 1
+		if r > 0xffff {
+			width = 2
+		}
+		if units+width > character {
+			return line[:offset]
+		}
+		units += width
 	}
-	runes := []rune(line)
-	if character > len(runes) {
-		character = len(runes)
-	}
-	return string(runes[:character])
+	return line
 }
 
 func sectionAt(catalog *systemd.Catalog, text string, lineNo int) string {

@@ -17,7 +17,7 @@ type Range struct {
 
 type Diagnostic struct {
 	Range    Range  `json:"range"`
-	Severity int    `json:"severity,omitempty"`
+	Severity int    `json:"severity,omitzero"`
 	Source   string `json:"source,omitempty"`
 	Message  string `json:"message"`
 }
@@ -35,6 +35,7 @@ func Diagnostics(catalog *Catalog, text, unitType string) []Diagnostic {
 	sectionKnown := false
 	seenSingletons := map[string]int{}
 	serviceChecks := newServiceChecks()
+	lastValues := map[string]map[string]Entry{}
 
 	for _, entry := range doc.Entries {
 		switch entry.Kind {
@@ -68,7 +69,11 @@ func Diagnostics(catalog *Catalog, text, unitType string) []Diagnostic {
 			}
 			directive, ok := catalog.Directive(section, entry.Key)
 			if !ok {
-				diagnostics = append(diagnostics, diagnostic(entry, SeverityWarning, fmt.Sprintf("unknown directive %s in [%s]", entry.Key, section)))
+				message := fmt.Sprintf("unknown directive %s in [%s]", entry.Key, section)
+				if catalog.Version != "" {
+					message += fmt.Sprintf(" (catalog %s)", catalog.Version)
+				}
+				diagnostics = append(diagnostics, diagnostic(entry, SeverityWarning, message))
 				continue
 			}
 			if !directive.Multiple {
@@ -79,15 +84,26 @@ func Diagnostics(catalog *Catalog, text, unitType string) []Diagnostic {
 					seenSingletons[key] = entry.Line
 				}
 			}
-			if len(directive.Values) > 0 && shouldValidateValue(directive, entry.Value) && !containsFold(directive.Values, entry.Value) {
-				diagnostics = append(diagnostics, diagnostic(entry, SeverityWarning, fmt.Sprintf("unexpected value %q for %s", entry.Value, directive.Name)))
+			if message := validateDirectiveValue(directive, entry.Value); message != "" {
+				diagnostics = append(diagnostics, diagnostic(entry, SeverityWarning, message))
 			}
+			if lastValues[section] == nil {
+				lastValues[section] = map[string]Entry{}
+			}
+			lastValues[section][entry.Key] = entry
 			if unitType == "service" && section == "Service" {
 				serviceChecks.record(entry)
 			}
 		}
 	}
 	diagnostics = append(diagnostics, serviceChecks.diagnostics()...)
+	for _, name := range catalog.SectionsFor(unitType) {
+		values := lastValues[name]
+		partition, ok := values["CPUSetPartition"]
+		if ok && contains([]string{"member", "root", "isolated"}, partition.Value) && values["AllowedCPUs"].Value == "" {
+			diagnostics = append(diagnostics, diagnostic(partition, SeverityHint, "CPUSetPartition= requires AllowedCPUs=; it is not set in this document (it may be supplied by another unit file or drop-in)"))
+		}
+	}
 	return diagnostics
 }
 

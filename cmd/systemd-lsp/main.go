@@ -2,7 +2,7 @@ package main
 
 import (
 	"bufio"
-	"encoding/json"
+	"encoding/json/jsontext"
 	"errors"
 	"fmt"
 	"io"
@@ -52,7 +52,7 @@ func main() {
 }
 
 type handler interface {
-	Handle(json.RawMessage) [][]byte
+	Handle(jsontext.Value) [][]byte
 }
 
 func serve(in io.Reader, out io.Writer, h handler) error {

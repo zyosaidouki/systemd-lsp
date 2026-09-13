@@ -1,6 +1,9 @@
 package systemd
 
-import "strings"
+import (
+	"fmt"
+	"strings"
+)
 
 const (
 	LocaleEnglish  = "en"
@@ -42,6 +45,9 @@ func DirectiveDocFor(section string, directive Directive, locale string) string 
 		}
 		return "systemd directive for the [" + section + "] section."
 	}
+	if directive.DocJapanese != "" {
+		return directive.DocJapanese
+	}
 	if doc, ok := japaneseDirectiveDocs[directive.Name]; ok {
 		return doc
 	}
@@ -50,6 +56,13 @@ func DirectiveDocFor(section string, directive Directive, locale string) string 
 
 func DirectiveDocumentationFor(section string, directive Directive, locale string) string {
 	doc := DirectiveDocFor(section, directive, locale)
+	if directive.Since > 0 {
+		if NormalizeLocale(locale) == LocaleJapanese {
+			doc += fmt.Sprintf("\n\nsystemd v%d 以降。", directive.Since)
+		} else {
+			doc += fmt.Sprintf("\n\nAvailable since systemd v%d.", directive.Since)
+		}
+	}
 	syntax := directiveSyntax(directive)
 	example := directiveExample(directive)
 	return markdownDoc(doc, directive.ManPage, syntax, example)

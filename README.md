@@ -263,6 +263,27 @@ let g:systemd_lsp_catalog_path = '/path/to/catalog.json'
 - Template insertion for empty standalone `.service` files; drop-ins and other
   unit types are never populated automatically
 
+### Recent systemd settings
+
+The embedded catalog is generated from the parser in
+[systemd v262-rc2](https://github.com/systemd/systemd/releases/tag/v262-rc2).
+The v262 features are preview support.
+
+- Accepts `PrivateUsers=full` and completes values for the selected catalog version.
+- Provides value completion and English/Japanese descriptions for `CPUSetPartition=`, `CPUPressureWatch=`, `IOPressureWatch=`, and `FileDescriptorStorePreserve=`.
+- Completes subsequent space-separated values in `RefreshOnReload=` and `SecureBits=`, including inverted lists such as `RefreshOnReload=~extensions credentials`.
+- Offers editable snippets for `ConditionFraction=`/`AssertFraction=` and `ConditionMachineTag=`/`AssertMachineTag=`. Clients without snippet support receive ordinary `Key=` insertions.
+- Checks rollout percentages and precision, enum values, and `ActivatingConcurrencyMax=` numbers. Shows a hint if `CPUSetPartition=` has no accompanying `AllowedCPUs=` in the same document.
+- Documents v262's `RestartRandomizedDelaySec=`, `ActivatingConcurrencyMax=`, and new `NUMAPolicy=` and `SecureBits=` values.
+
+Diagnostics are static checks of the open document. They do not merge other unit
+files or drop-ins, or detect kernel features on the deployment host.
+
+An external catalog with a `version` replaces the embedded directive list.
+Known value introduction versions are also respected: for example, a v260
+catalog neither completes nor accepts `FileDescriptorStorePreserve=on-success`.
+An external catalog without `version` adds or overrides entries instead.
+
 ## Supported file extensions
 
 The editor starts `systemd-lsp` when one of these extensions is detected as the
@@ -294,7 +315,7 @@ filetype rules.
 
 ## Development
 
-Building from source is optional and requires Go 1.26 or newer. To build the
+Building from source is optional and requires Go 1.27 or newer. To build the
 managed executable locally:
 
 ```sh
@@ -305,6 +326,11 @@ go build -o bin/systemd-lsp ./cmd/systemd-lsp
 Other LSP clients can use a manually downloaded release or a source build.
 The standalone executable still supports `systemd-lsp update`; editor users
 use `:SystemdLspUpdate` instead.
+
+JSON handling uses Go 1.27's `encoding/json/v2`. JSON input must use valid UTF-8
+and unique object member names; field names are case-sensitive. Catalog files
+must contain exactly one JSON value. Generated catalogs retain their existing
+formatting, and LSP responses preserve required `null` results and empty arrays.
 
 GitHub Actions runs tests, `go vet`, and a build on the Linux x64 self-hosted
 runner for pushes to `main` and pull requests from this repository. Fork pull
@@ -372,6 +398,10 @@ The generator expands the common `EXEC_CONTEXT_CONFIG_ITEMS`,
 systemd's gperf template, then emits JSON containing section, directive, parser
 function, inferred value kind, syntax, example, man page, enum values where
 known, and whether repeated assignments are normally expected.
+
+Introduction versions from man XML are recorded as `since`. Supported recent
+features also receive Japanese descriptions, snippets, and version-aware value
+candidates.
 
 The checker prints catalog statistics and fails on obvious catalog problems
 such as duplicate section/directive entries, empty names, or a directive count

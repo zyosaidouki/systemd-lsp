@@ -3,16 +3,19 @@ package systemd
 import "sort"
 
 type Directive struct {
-	Name      string
-	Doc       string
-	Parser    string
-	ValueKind string
-	Syntax    string
-	Example   string
-	ManPage   string
-	Multiple  bool
-	UnitTypes []string
-	Values    []string
+	Name        string
+	Doc         string
+	DocJapanese string
+	Since       int
+	Snippet     string
+	Parser      string
+	ValueKind   string
+	Syntax      string
+	Example     string
+	ManPage     string
+	Multiple    bool
+	UnitTypes   []string
+	Values      []string
 }
 
 type Section struct {
@@ -22,6 +25,7 @@ type Section struct {
 }
 
 type Catalog struct {
+	Version    string
 	sections   map[string]Section
 	directives map[string]map[string]Directive
 }
@@ -104,6 +108,16 @@ func (c *Catalog) ValuesFor(section, key string) []string {
 }
 
 func (c *Catalog) MergeCatalogFile(file CatalogFile) {
+	// A versioned file is a complete snapshot, not an overlay on newer data.
+	if file.Version != "" {
+		c.Version = file.Version
+		c.sections = map[string]Section{}
+		c.directives = map[string]map[string]Directive{}
+		for _, section := range builtinSections {
+			c.sections[section.Name] = section
+		}
+	}
+	file = EnrichCatalogFeatures(file)
 	for _, incoming := range file.Directives {
 		if incoming.Section == "" || incoming.Name == "" {
 			continue
@@ -119,7 +133,14 @@ func (c *Catalog) MergeCatalogFile(file CatalogFile) {
 		}
 		next := incoming.directive()
 		if existing, ok := c.directives[incoming.Section][incoming.Name]; ok {
-			next = mergeDirective(existing, next)
+			next = mergeDirective(next, existing)
+		} else {
+			for _, builtin := range builtinDirectives[incoming.Section] {
+				if builtin.Name == incoming.Name {
+					next = mergeDirective(next, builtin)
+					break
+				}
+			}
 		}
 		c.directives[incoming.Section][incoming.Name] = next
 	}
@@ -498,6 +519,15 @@ func combineDirectives(groups ...[]Directive) []Directive {
 }
 
 func mergeDirective(existing, next Directive) Directive {
+	if existing.DocJapanese == "" {
+		existing.DocJapanese = next.DocJapanese
+	}
+	if existing.Since == 0 {
+		existing.Since = next.Since
+	}
+	if existing.Snippet == "" {
+		existing.Snippet = next.Snippet
+	}
 	if existing.Doc == "" {
 		existing.Doc = next.Doc
 	}
