@@ -18,6 +18,8 @@ import (
 	"runtime"
 	"strings"
 	"time"
+
+	"github.com/zyosaidouki/systemd-lsp/internal/version"
 )
 
 const latestURL = "https://api.github.com/repos/zyosaidouki/systemd-lsp/releases/latest"
@@ -31,40 +33,61 @@ type release struct {
 	} `json:"assets"`
 }
 
-// Run replaces the executable that was invoked, following symbolic links.
-func Run() (string, error) {
-	executable, err := os.Executable()
-	if err != nil {
-		return "", err
-	}
-	return install(&http.Client{Timeout: 2 * time.Minute}, latestURL, executable, runtime.GOOS, runtime.GOARCH)
+type Result struct {
+	Previous string
+	Current  string
+	Already  bool
 }
 
-func install(client *http.Client, endpoint, target, goos, arch string) (string, error) {
+func (r Result) Message() string {
+	if r.Already {
+		return fmt.Sprintf("systemd-lsp already: %s", r.Current)
+	}
+	return fmt.Sprintf("systemd-lsp updated: %s -> %s", r.Previous, r.Current)
+}
+
+// Run updates the invoked executable, following symbolic links, unless current.
+func Run() (Result, error) {
+	executable, err := os.Executable()
+	if err != nil {
+		return Result{}, err
+	}
+	return install(&http.Client{Timeout: 2 * time.Minute}, latestURL, executable, runtime.GOOS, runtime.GOARCH, version.Value)
+}
+
+func install(client *http.Client, endpoint, target, goos, arch, currentVersion string) (Result, error) {
 	if !((goos == "linux" && arch == "amd64") || (goos == "darwin" && arch == "arm64")) {
-		return "", fmt.Errorf("no release binary for %s/%s", goos, arch)
+		return Result{}, fmt.Errorf("no release binary for %s/%s", goos, arch)
 	}
 	target, err := filepath.EvalSymlinks(target)
 	if err != nil {
-		return "", err
+		return Result{}, err
 	}
 	info, err := os.Stat(target)
 	if err != nil {
-		return "", err
+		return Result{}, err
 	}
 	if !info.Mode().IsRegular() {
-		return "", fmt.Errorf("not a regular executable: %s", target)
+		return Result{}, fmt.Errorf("not a regular executable: %s", target)
 	}
 	metadata, err := download(client, endpoint, 1<<20)
 	if err != nil {
-		return "", err
+		return Result{}, err
 	}
 	var rel release
 	if err := json.Unmarshal(metadata, &rel); err != nil {
-		return "", fmt.Errorf("release metadata: %w", err)
+		return Result{}, fmt.Errorf("release metadata: %w", err)
 	}
 	if rel.Tag == "" {
-		return "", fmt.Errorf("release has no tag")
+		return Result{}, fmt.Errorf("release has no tag")
+	}
+	if currentVersion == "" {
+		currentVersion = "unknown"
+	}
+	result := Result{Previous: currentVersion, Current: rel.Tag}
+	if currentVersion == rel.Tag {
+		result.Already = true
+		return result, nil
 	}
 	name := "systemd-lsp-" + goos + "-" + arch + ".tar.gz"
 	urls := map[string]string{}
@@ -72,68 +95,74 @@ func install(client *http.Client, endpoint, target, goos, arch string) (string, 
 		urls[asset.Name] = asset.URL
 	}
 	if urls[name] == "" || urls["SHA256SUMS"] == "" {
-		return "", fmt.Errorf("release %s is missing %s or SHA256SUMS", rel.Tag, name)
+		return Result{}, fmt.Errorf("release %s is missing %s or SHA256SUMS", rel.Tag, name)
 	}
 	// Both URLs come from one release response, never separate 'latest' requests.
 	sums, err := download(client, urls["SHA256SUMS"], 1<<20)
 	if err != nil {
-		return "", err
+		return Result{}, err
 	}
 	var expected []byte
 	for _, line := range strings.Split(string(sums), "\n") {
 		fields := strings.Fields(line)
 		if len(fields) == 2 && fields[1] == name {
 			if expected != nil {
-				return "", fmt.Errorf("duplicate checksum for %s", name)
+				return Result{}, fmt.Errorf("duplicate checksum for %s", name)
 			}
 			expected, err = hex.DecodeString(fields[0])
 			if err != nil || len(expected) != sha256.Size {
-				return "", fmt.Errorf("invalid checksum for %s", name)
+				return Result{}, fmt.Errorf("invalid checksum for %s", name)
 			}
 		}
 	}
 	if expected == nil {
-		return "", fmt.Errorf("missing checksum for %s", name)
+		return Result{}, fmt.Errorf("missing checksum for %s", name)
 	}
 	archive, err := download(client, urls[name], 32<<20)
 	if err != nil {
-		return "", err
+		return Result{}, err
 	}
 	actual := sha256.Sum256(archive)
 	if !bytes.Equal(expected, actual[:]) {
-		return "", fmt.Errorf("checksum mismatch for %s; executable unchanged", name)
+		return Result{}, fmt.Errorf("checksum mismatch for %s; executable unchanged", name)
 	}
 	binary, err := unpack(archive)
 	if err != nil {
-		return "", err
+		return Result{}, err
 	}
 	if err := validateBinary(binary, goos); err != nil {
-		return "", err
+		return Result{}, err
+	}
+	// Identical binaries can identify an older release without version metadata.
+	if existing, err := os.ReadFile(target); err == nil && bytes.Equal(existing, binary) {
+		result.Previous = rel.Tag
+		result.Already = true
+		return result, nil
 	}
 	// A new inode in the same directory permits atomic replacement of a running
 	// Linux executable and avoids overwriting a running Mach-O image in place.
 	f, err := os.CreateTemp(filepath.Dir(target), ".systemd-lsp-update-*")
 	if err != nil {
-		return "", fmt.Errorf("cannot write executable directory: %w", err)
+		return Result{}, fmt.Errorf("cannot write executable directory: %w", err)
 	}
 	defer os.Remove(f.Name())
 	defer f.Close()
 	if _, err = f.Write(binary); err != nil {
-		return "", err
+		return Result{}, err
 	}
 	if err = f.Chmod(info.Mode().Perm() | 0o111); err != nil {
-		return "", err
+		return Result{}, err
 	}
 	if err = f.Sync(); err != nil {
-		return "", err
+		return Result{}, err
 	}
 	if err = f.Close(); err != nil {
-		return "", err
+		return Result{}, err
 	}
 	if err = os.Rename(f.Name(), target); err != nil {
-		return "", fmt.Errorf("replace executable: %w", err)
+		return Result{}, fmt.Errorf("replace executable: %w", err)
 	}
-	return rel.Tag, nil
+	return result, nil
 }
 
 func download(client *http.Client, url string, limit int64) ([]byte, error) {

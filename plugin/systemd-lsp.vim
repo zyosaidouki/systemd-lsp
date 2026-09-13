@@ -57,12 +57,12 @@ augroup systemd_lsp_vim
   autocmd User lsp_buffer_enabled call s:on_lsp_buffer_enabled()
 augroup END
 
-function! s:reconnect(attempt, timer) abort
+function! s:reconnect(attempt, message, timer) abort
   if exists('*lsp#get_server_status') && lsp#get_server_status('systemd-lsp') ==# 'running'
     if a:attempt < 50
-      call timer_start(100, function('s:reconnect', [a:attempt + 1]))
+      call timer_start(100, function('s:reconnect', [a:attempt + 1, a:message]))
     else
-      echom 'systemd-lsp updated; restart Vim to reconnect LSP'
+      echom a:message . '; restart Vim to reconnect LSP'
     endif
     return
   endif
@@ -76,7 +76,7 @@ function! s:reconnect(attempt, timer) abort
       endif
     endif
   endfor
-  echom 'systemd-lsp updated and LSP restart requested'
+  echom a:message . '; LSP restart requested'
 endfunction
 
 function! s:installed(job, status) abort
@@ -89,10 +89,16 @@ function! s:installed(job, status) abort
     echohl None
     return
   endif
+  let messages = filter(split(output, "\n"), {_, line -> line =~# '^systemd-lsp \(updated\|already\): '})
+  let message = empty(messages) ? 'systemd-lsp updated' : messages[-1]
+  if message =~# '^systemd-lsp already:'
+    echom message
+    return
+  endif
   if exists('*lsp#stop_server')
     call lsp#stop_server('systemd-lsp')
   endif
-  call timer_start(100, function('s:reconnect', [0]))
+  call timer_start(100, function('s:reconnect', [0, message]))
 endfunction
 
 function! s:update() abort
@@ -102,7 +108,7 @@ function! s:update() abort
   endif
   let s:updating = 1
   let s:log = tempname()
-  echom 'Downloading systemd-lsp release...'
+  echom 'Checking systemd-lsp release...'
   let s:job = job_start(['sh', s:root . '/scripts/install-release.sh'], {
         \ 'out_io': 'file', 'out_name': s:log, 'err_io': 'out',
         \ 'exit_cb': function('s:installed'),

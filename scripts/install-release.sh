@@ -34,6 +34,25 @@ case "$url" in
   *) echo 'Unable to resolve latest release' >&2; exit 1 ;;
 esac
 case "$tag" in ''|*[!a-zA-Z0-9._-]*) echo 'Unexpected release tag' >&2; exit 1 ;; esac
+current=not-installed
+if [ -e "$root/bin/systemd-lsp" ]; then
+  current=unknown
+  if installed_version=$("$root/bin/systemd-lsp" --version 2>/dev/null); then
+    case "$installed_version" in
+      'systemd-lsp '*)
+        candidate=${installed_version#'systemd-lsp '}
+        case "$candidate" in
+          ''|*[!a-zA-Z0-9._-]*) ;;
+          *) current=$candidate ;;
+        esac
+        ;;
+    esac
+  fi
+fi
+if [ "$current" = "$tag" ]; then
+  printf 'systemd-lsp already: %s\n' "$current"
+  exit 0
+fi
 asset="systemd-lsp-$platform.tar.gz"
 for name in SHA256SUMS "$asset"; do
   curl --proto '=https' --proto-redir '=https' -fLsS --retry 2 --max-time 120 \
@@ -52,5 +71,9 @@ tar -xzf "$asset"
 chmod 755 systemd-lsp
 # Check that the verified binary starts on this machine before replacing it.
 ./systemd-lsp --help
+if cmp -s systemd-lsp "$root/bin/systemd-lsp"; then
+  printf 'systemd-lsp already: %s\n' "$tag"
+  exit 0
+fi
 mv -f systemd-lsp "$root/bin/systemd-lsp"
-printf 'Installed systemd-lsp %s (%s)\n' "$tag" "$platform"
+printf 'systemd-lsp updated: %s -> %s\n' "$current" "$tag"

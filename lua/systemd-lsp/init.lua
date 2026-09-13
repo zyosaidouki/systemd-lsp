@@ -18,7 +18,7 @@ local function enable()
   vim.lsp.enable("systemd-lsp")
 end
 
-local function restart()
+local function restart(message)
   local clients = vim.lsp.get_clients({ name = "systemd-lsp" })
   vim.lsp.enable("systemd-lsp", false)
   for _, client in ipairs(clients) do client:stop(true) end
@@ -28,12 +28,12 @@ local function restart()
       if not client:is_stopped() then
         attempts = attempts + 1
         if attempts < 50 then vim.defer_fn(finish, 100); return end
-        vim.notify("systemd-lsp updated; restart the editor to reconnect LSP", vim.log.levels.WARN)
+        vim.notify(message .. "; restart the editor to reconnect LSP", vim.log.levels.WARN)
         return
       end
     end
     enable()
-    vim.notify("systemd-lsp updated and LSP restarted")
+    vim.notify(message .. "; LSP restarted")
   end
   finish()
 end
@@ -41,7 +41,7 @@ end
 function M.update()
   if updating then vim.notify("systemd-lsp update is already running"); return end
   updating = true
-  vim.notify("Downloading systemd-lsp release…")
+  vim.notify("Checking systemd-lsp release…")
   local ok, err = pcall(vim.system, { "sh", root .. "/scripts/install-release.sh" }, { text = true }, function(result)
     vim.schedule(function()
       updating = false
@@ -49,7 +49,12 @@ function M.update()
         vim.notify("systemd-lsp installation failed:\n" .. (result.stderr or "") .. (result.stdout or ""), vim.log.levels.ERROR)
         return
       end
-      restart()
+      local message = (result.stdout or ""):match("(systemd%-lsp [^\r\n]+)%s*$") or "systemd-lsp updated"
+      if message:match("^systemd%-lsp already:") then
+        vim.notify(message)
+        return
+      end
+      restart(message)
     end)
   end)
   if not ok then

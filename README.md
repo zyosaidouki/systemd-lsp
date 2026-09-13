@@ -221,7 +221,15 @@ Run inside your editor:
 :SystemdLspUpdate
 ```
 
-This downloads the latest release and restarts the LSP client. The binary is stored at `bin/systemd-lsp` inside the plugin.
+This checks the latest release, updates the binary, and restarts the LSP client
+when needed. The binary is stored at `bin/systemd-lsp` inside the plugin.
+Updates show both versions, for example `systemd-lsp updated: build-41-1 -> build-42-1`.
+If already current, it shows `systemd-lsp already: build-42-1` without reinstalling
+or restarting the LSP. The standalone `systemd-lsp update` uses the same messages.
+
+Use `bin/systemd-lsp --version` to display the installed version. Local builds
+show `dev`; older binaries without version metadata show `unknown` as the previous
+version during an update. A first installation shows `not-installed`.
 
 ## Troubleshooting
 

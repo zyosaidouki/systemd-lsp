@@ -20,6 +20,8 @@ jobs:
     if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
     runs-on: [self-hosted, Linux, X64]
     timeout-minutes: 15
+    outputs:
+      release_tag: ${{ steps.release-version.outputs.tag }}
     steps:
       - name: Check out source
         uses: actions/checkout@v7
@@ -44,14 +46,19 @@ jobs:
       - name: Build
         run: go build ./...
 
+      - name: Set release version
+        id: release-version
+        run: echo "tag=build-${GITHUB_RUN_NUMBER}-${GITHUB_RUN_ATTEMPT}" >> "$GITHUB_OUTPUT"
+
       - name: Build for Linux x86-64
         env:
           GOOS: linux
           GOARCH: amd64
           CGO_ENABLED: '0'
+          RELEASE_TAG: ${{ steps.release-version.outputs.tag }}
         run: |
           mkdir -p dist/linux-amd64
-          go build -trimpath -o dist/linux-amd64/systemd-lsp ./cmd/systemd-lsp
+          go build -trimpath -ldflags "-X github.com/zyosaidouki/systemd-lsp/internal/version.Value=${RELEASE_TAG}" -o dist/linux-amd64/systemd-lsp ./cmd/systemd-lsp
           tar -czf dist/systemd-lsp-linux-amd64.tar.gz -C dist/linux-amd64 systemd-lsp
 
       - name: Upload Linux x86-64 build
@@ -66,9 +73,10 @@ jobs:
           GOOS: darwin
           GOARCH: arm64
           CGO_ENABLED: '0'
+          RELEASE_TAG: ${{ steps.release-version.outputs.tag }}
         run: |
           mkdir -p dist/darwin-arm64
-          go build -trimpath -o dist/darwin-arm64/systemd-lsp ./cmd/systemd-lsp
+          go build -trimpath -ldflags "-X github.com/zyosaidouki/systemd-lsp/internal/version.Value=${RELEASE_TAG}" -o dist/darwin-arm64/systemd-lsp ./cmd/systemd-lsp
           tar -czf dist/systemd-lsp-darwin-arm64.tar.gz -C dist/darwin-arm64 systemd-lsp
 
       - name: Upload Apple Silicon build
@@ -98,6 +106,7 @@ jobs:
         uses: actions/github-script@v9
         env:
           RELEASE_DIR: ${{ runner.temp }}/release-${{ github.run_id }}-${{ github.run_attempt }}
+          RELEASE_TAG: ${{ needs.test.outputs.release_tag }}
         with:
           script: |
             const fs = require('node:fs/promises');
@@ -117,7 +126,7 @@ jobs:
               `${crypto.createHash('sha256').update(data).digest('hex')}  ${name}\n`
             ).join('');
             assets.push({ name: 'SHA256SUMS', data: Buffer.from(checksums) });
-            const tag = `build-${context.runNumber}-${process.env.GITHUB_RUN_ATTEMPT}`;
+            const tag = process.env.RELEASE_TAG;
             const { data: release } = await github.rest.repos.createRelease({
               ...repo,
               tag_name: tag,

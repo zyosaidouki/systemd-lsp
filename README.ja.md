@@ -221,7 +221,15 @@ let g:systemd_lsp_locale = 'ja'
 :SystemdLspUpdate
 ```
 
-最新版を取得し、LSP を再起動します。実行ファイルはプラグイン内の `bin/systemd-lsp` に保存されます。
+最新版を確認し、必要な場合にバイナリを更新して LSP を再起動します。
+実行ファイルはプラグイン内の `bin/systemd-lsp` に保存されます。
+更新時は `systemd-lsp updated: build-41-1 -> build-42-1` のように更新前後のバージョンを表示します。
+最新版なら `systemd-lsp already: build-42-1` と表示し、再インストールや LSP の再起動は行いません。
+単独の `systemd-lsp update` も同じ形式で表示します。
+
+`bin/systemd-lsp --version` でインストール済みのバージョンを確認できます。
+ローカルビルドは `dev`、バージョン情報がない旧バイナリからの更新では更新前を `unknown` と表示します。
+初回インストールの更新前は `not-installed` です。
 
 ## うまく動かない場合
 
