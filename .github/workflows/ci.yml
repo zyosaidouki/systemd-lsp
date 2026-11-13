@@ -58,7 +58,7 @@ jobs:
           RELEASE_TAG: ${{ steps.release-version.outputs.tag }}
         run: |
           mkdir -p dist/linux-amd64
-          go build -trimpath -ldflags "-X github.com/zyosaidouki/systemd-lsp/internal/version.Value=${RELEASE_TAG}" -o dist/linux-amd64/systemd-lsp ./cmd/systemd-lsp
+          go build -trimpath -ldflags "-s -w -X github.com/zyosaidouki/systemd-lsp/internal/version.Value=${RELEASE_TAG}" -o dist/linux-amd64/systemd-lsp ./cmd/systemd-lsp
           tar -czf dist/systemd-lsp-linux-amd64.tar.gz -C dist/linux-amd64 systemd-lsp
 
       - name: Upload Linux x86-64 build
@@ -76,7 +76,7 @@ jobs:
           RELEASE_TAG: ${{ steps.release-version.outputs.tag }}
         run: |
           mkdir -p dist/darwin-arm64
-          go build -trimpath -ldflags "-X github.com/zyosaidouki/systemd-lsp/internal/version.Value=${RELEASE_TAG}" -o dist/darwin-arm64/systemd-lsp ./cmd/systemd-lsp
+          go build -trimpath -ldflags "-s -w -X github.com/zyosaidouki/systemd-lsp/internal/version.Value=${RELEASE_TAG}" -o dist/darwin-arm64/systemd-lsp ./cmd/systemd-lsp
           tar -czf dist/systemd-lsp-darwin-arm64.tar.gz -C dist/darwin-arm64 systemd-lsp
 
       - name: Upload Apple Silicon build
