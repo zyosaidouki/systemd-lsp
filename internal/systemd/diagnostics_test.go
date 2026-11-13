@@ -262,3 +262,46 @@ func diagnosticMessages(diagnostics []Diagnostic) []string {
 	}
 	return messages
 }
+
+func TestDiagnosticsAllowsRepeatingAdditiveSettings(t *testing.T) {
+	for _, line := range []string{
+		"SystemCallFilter=@system-service", "SystemCallLog=@privileged", "SystemCallArchitectures=native",
+		"RestrictAddressFamilies=AF_INET", "RestrictNamespaces=user", "RestrictFileSystems=ext4",
+		"RestrictNetworkInterfaces=lo", "OpenFile=/a:b", "StandardInputText=a", "AllowedCPUs=1",
+		"NUMAMask=0", "Delegate=cpu", "IOReadBandwidthMax=/dev/sda 1M",
+	} {
+		if diagnostics := Diagnostics(NewCatalog(), "[Service]\n"+line+"\n"+line+"\n", "service"); len(diagnostics) != 0 {
+			t.Errorf("%s repeated: %#v, want no diagnostics", line, diagnostics)
+		}
+	}
+	if diagnostics := Diagnostics(NewCatalog(), "[Unit]\nWantsMountsFor=/a\nWantsMountsFor=/b\n", "service"); len(diagnostics) != 0 {
+		t.Errorf("WantsMountsFor repeated: %#v, want no diagnostics", diagnostics)
+	}
+	// Settings where the later assignment wins are still reported.
+	for _, line := range []string{"MemoryMax=1G", "PrivateMounts=yes", "ExitType=main"} {
+		diagnostics := Diagnostics(NewCatalog(), "[Service]\n"+line+"\n"+line+"\n", "service")
+		if len(diagnostics) != 1 || !strings.Contains(diagnostics[0].Message, "already set") {
+			t.Errorf("%s repeated: %#v, want one duplicate warning", line, diagnostics)
+		}
+	}
+}
+
+func TestDiagnosticsAcceptsExtendedBooleanValues(t *testing.T) {
+	for _, line := range []string{
+		"PrivateTmp=disconnected", "ProtectSystem=on", "ProtectSystem=strict", "ProtectHome=tmpfs",
+		"ProtectControlGroups=private", "ProtectHostname=private",
+		// config_parse_tristate takes every boolean spelling.
+		"MemoryKSM=true", "MemoryKSM=on", "SetLoginEnvironment=0", "PrivateMounts=t",
+		"RemainAfterExit=y", "PrivateNetwork=F",
+	} {
+		if diagnostics := Diagnostics(NewCatalog(), "[Service]\n"+line+"\n", "service"); len(diagnostics) != 0 {
+			t.Errorf("%s: %#v, want no diagnostics", line, diagnostics)
+		}
+	}
+	for _, line := range []string{"MemoryKSM=auto", "PrivateTmp=connected", "ProtectSystem=maybe", "RemainAfterExit=x"} {
+		diagnostics := Diagnostics(NewCatalog(), "[Service]\n"+line+"\n", "service")
+		if len(diagnostics) != 1 || !strings.Contains(diagnostics[0].Message, "unexpected value") {
+			t.Errorf("%s: %#v, want one unexpected value", line, diagnostics)
+		}
+	}
+}

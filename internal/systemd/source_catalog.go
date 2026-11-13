@@ -247,7 +247,38 @@ func mergeCatalogDirective(existing, next CatalogDirective) CatalogDirective {
 	return existing
 }
 
+// additiveParsers extend the state left by earlier assignments instead of
+// replacing it, so repeating such a setting is not a mistake.
+var additiveParsers = map[string]bool{
+	"config_parse_address_families":            true,
+	"config_parse_cgroup_nft_set":              true,
+	"config_parse_delegate":                    true,
+	"config_parse_exec_input_data":             true,
+	"config_parse_exec_input_text":             true,
+	"config_parse_io_device_latency":           true,
+	"config_parse_io_device_weight":            true,
+	"config_parse_io_limit":                    true,
+	"config_parse_namespace_flags":             true,
+	"config_parse_numa_mask":                   true,
+	"config_parse_open_file":                   true,
+	"config_parse_path_spec":                   true,
+	"config_parse_restrict_filesystems":        true,
+	"config_parse_restrict_network_interfaces": true,
+	"config_parse_service_sockets":             true,
+	"config_parse_set_status":                  true,
+	"config_parse_socket_listen":               true,
+	"config_parse_syscall_archs":               true,
+	"config_parse_syscall_filter":              true,
+	"config_parse_syscall_log":                 true,
+	"config_parse_timer":                       true,
+	"config_parse_unit_cpu_set":                true,
+	"config_parse_unit_mounts_for":             true,
+}
+
 func inferMultiple(parser, name string) bool {
+	if additiveParsers[parser] {
+		return true
+	}
 	if strings.HasPrefix(name, "Condition") || strings.HasPrefix(name, "Assert") {
 		return true
 	}
@@ -279,7 +310,8 @@ func inferValues(section, parser, name string) []string {
 	case parser == "config_parse_bool":
 		return boolValues
 	case parser == "config_parse_tristate":
-		return []string{"yes", "no", "auto"}
+		// The third state is the empty assignment; "auto" is rejected.
+		return boolValues
 	}
 	switch name {
 	case "Type":

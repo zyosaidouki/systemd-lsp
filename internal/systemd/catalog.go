@@ -61,6 +61,21 @@ func (c *Catalog) SectionAllowed(section, unitType string) bool {
 	return contains(s.UnitTypes, unitType)
 }
 
+// SupportsUnitType reports whether files of this type are unit files the
+// catalog describes. A file without a recognizable type is given the benefit
+// of the doubt; other systemd formats such as .network are not unit files.
+func (c *Catalog) SupportsUnitType(unitType string) bool {
+	if unitType == "" {
+		return true
+	}
+	for _, section := range c.sections {
+		if contains(section.UnitTypes, unitType) {
+			return true
+		}
+	}
+	return false
+}
+
 func (c *Catalog) SectionDoc(section string) string {
 	if s, ok := c.sections[section]; ok {
 		return s.Doc

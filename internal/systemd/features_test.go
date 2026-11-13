@@ -170,3 +170,50 @@ func TestNewFeatureDiagnostics(t *testing.T) {
 		})
 	}
 }
+
+func TestOlderCatalogRejectsNewerBooleanExtensions(t *testing.T) {
+	c := NewCatalog()
+	c.MergeCatalogFile(CatalogFile{Version: "v256", Directives: []CatalogDirective{
+		{Section: "Service", Name: "PrivateTmp", Parser: "config_parse_private_tmp"},
+		{Section: "Service", Name: "ProtectSystem", Parser: "config_parse_protect_system"},
+	}})
+	if contains(c.ValuesFor("Service", "PrivateTmp"), "disconnected") {
+		t.Fatal("v256 must not offer PrivateTmp=disconnected")
+	}
+	if !contains(c.ValuesFor("Service", "ProtectSystem"), "strict") {
+		t.Fatal("v256 must offer ProtectSystem=strict")
+	}
+}
+
+func TestCatalogsAreCorrectedOnLoad(t *testing.T) {
+	// A catalog generated before additive parsers and tristates were handled.
+	c := NewCatalog()
+	c.MergeCatalogFile(CatalogFile{Version: "v262", Directives: []CatalogDirective{
+		{Section: "Service", Name: "SystemCallFilter", Parser: "config_parse_syscall_filter"},
+		{Section: "Service", Name: "SystemCallErrorNumber", Parser: "config_parse_syscall_errno"},
+		{Section: "Service", Name: "MemoryKSM", Parser: "config_parse_tristate", Values: []string{"yes", "no", "auto"}},
+	}})
+	if d, _ := c.Directive("Service", "SystemCallFilter"); !d.Multiple {
+		t.Fatal("SystemCallFilter must be repeatable")
+	}
+	if d, _ := c.Directive("Service", "SystemCallErrorNumber"); d.Multiple {
+		t.Fatal("SystemCallErrorNumber is a single value")
+	}
+	if values := c.ValuesFor("Service", "MemoryKSM"); contains(values, "auto") || !contains(values, "true") {
+		t.Fatalf("MemoryKSM values = %v, want booleans", values)
+	}
+}
+
+func TestEmbeddedCatalogIsUpToDate(t *testing.T) {
+	file, err := DecodeCatalogFile(bytes.NewReader(embeddedLoadFragmentCatalog))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var out bytes.Buffer
+	if err := EncodeCatalogFile(&out, EnrichCatalogFeatures(file)); err != nil {
+		t.Fatal(err)
+	}
+	if !bytes.Equal(out.Bytes(), embeddedLoadFragmentCatalog) {
+		t.Fatal("catalogdata/load-fragment-main.json is stale; regenerate it after changing catalog inference or feature refinements")
+	}
+}

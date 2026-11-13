@@ -66,13 +66,15 @@
       "section": "Mount",
       "name": "AllowedCPUs",
       "parser": "config_parse_unit_cpu_set",
-      "valueKind": "string"
+      "valueKind": "string",
+      "multiple": true
     },
     {
       "section": "Mount",
       "name": "AllowedMemoryNodes",
       "parser": "config_parse_unit_cpu_set",
-      "valueKind": "string"
+      "valueKind": "string",
+      "multiple": true
     },
     {
       "section": "Mount",
@@ -128,9 +130,14 @@
       "parser": "config_parse_tristate",
       "valueKind": "tristate",
       "values": [
+        "true",
+        "false",
         "yes",
         "no",
-        "auto"
+        "on",
+        "off",
+        "1",
+        "0"
       ]
     },
     {
@@ -403,13 +410,15 @@
       "section": "Mount",
       "name": "Delegate",
       "parser": "config_parse_delegate",
-      "valueKind": "string"
+      "valueKind": "string",
+      "multiple": true
     },
     {
       "section": "Mount",
       "name": "DelegateNamespaces",
       "parser": "config_parse_namespace_flags",
-      "valueKind": "string"
+      "valueKind": "string",
+      "multiple": true
     },
     {
       "section": "Mount",
@@ -561,13 +570,15 @@
       "section": "Mount",
       "name": "IODeviceLatencyTargetSec",
       "parser": "config_parse_io_device_latency",
-      "valueKind": "duration"
+      "valueKind": "duration",
+      "multiple": true
     },
     {
       "section": "Mount",
       "name": "IODeviceWeight",
       "parser": "config_parse_io_device_weight",
-      "valueKind": "string"
+      "valueKind": "string",
+      "multiple": true
     },
     {
       "section": "Mount",
@@ -607,13 +618,15 @@
       "section": "Mount",
       "name": "IOReadBandwidthMax",
       "parser": "config_parse_io_limit",
-      "valueKind": "string"
+      "valueKind": "string",
+      "multiple": true
     },
     {
       "section": "Mount",
       "name": "IOReadIOPSMax",
       "parser": "config_parse_io_limit",
-      "valueKind": "string"
+      "valueKind": "string",
+      "multiple": true
     },
     {
       "section": "Mount",
@@ -637,13 +650,15 @@
       "section": "Mount",
       "name": "IOWriteBandwidthMax",
       "parser": "config_parse_io_limit",
-      "valueKind": "string"
+      "valueKind": "string",
+      "multiple": true
     },
     {
       "section": "Mount",
       "name": "IOWriteIOPSMax",
       "parser": "config_parse_io_limit",
-      "valueKind": "string"
+      "valueKind": "string",
+      "multiple": true
     },
     {
       "section": "Mount",
@@ -1058,9 +1073,14 @@
       "parser": "config_parse_tristate",
       "valueKind": "tristate",
       "values": [
+        "true",
+        "false",
         "yes",
         "no",
-        "auto"
+        "on",
+        "off",
+        "1",
+        "0"
       ]
     },
     {
@@ -1139,9 +1159,14 @@
       "parser": "config_parse_tristate",
       "valueKind": "tristate",
       "values": [
+        "true",
+        "false",
         "yes",
         "no",
-        "auto"
+        "on",
+        "off",
+        "1",
+        "0"
       ]
     },
     {
@@ -1168,13 +1193,15 @@
       "section": "Mount",
       "name": "NFTSet",
       "parser": "config_parse_cgroup_nft_set",
-      "valueKind": "string"
+      "valueKind": "string",
+      "multiple": true
     },
     {
       "section": "Mount",
       "name": "NUMAMask",
       "parser": "config_parse_numa_mask",
-      "valueKind": "string"
+      "valueKind": "string",
+      "multiple": true
     },
     {
       "section": "Mount",
@@ -1319,9 +1346,14 @@
       "parser": "config_parse_tristate",
       "valueKind": "tristate",
       "values": [
+        "true",
+        "false",
         "yes",
         "no",
-        "auto"
+        "on",
+        "off",
+        "1",
+        "0"
       ]
     },
     {
@@ -1350,7 +1382,18 @@
       "section": "Mount",
       "name": "PrivateTmp",
       "parser": "config_parse_private_tmp",
-      "valueKind": "string"
+      "valueKind": "enum",
+      "values": [
+        "true",
+        "false",
+        "yes",
+        "no",
+        "on",
+        "off",
+        "1",
+        "0",
+        "disconnected"
+      ]
     },
     {
       "section": "Mount",
@@ -1403,19 +1446,54 @@
       "section": "Mount",
       "name": "ProtectControlGroups",
       "parser": "config_parse_protect_control_groups",
-      "valueKind": "string"
+      "valueKind": "enum",
+      "values": [
+        "true",
+        "false",
+        "yes",
+        "no",
+        "on",
+        "off",
+        "1",
+        "0",
+        "private",
+        "strict"
+      ]
     },
     {
       "section": "Mount",
       "name": "ProtectHome",
       "parser": "config_parse_protect_home",
-      "valueKind": "string"
+      "valueKind": "enum",
+      "values": [
+        "true",
+        "false",
+        "yes",
+        "no",
+        "on",
+        "off",
+        "1",
+        "0",
+        "read-only",
+        "tmpfs"
+      ]
     },
     {
       "section": "Mount",
       "name": "ProtectHostname",
       "parser": "config_parse_protect_hostname",
-      "valueKind": "string"
+      "valueKind": "enum",
+      "values": [
+        "true",
+        "false",
+        "yes",
+        "no",
+        "on",
+        "off",
+        "1",
+        "0",
+        "private"
+      ]
     },
     {
       "section": "Mount",
@@ -1475,7 +1553,19 @@
       "section": "Mount",
       "name": "ProtectSystem",
       "parser": "config_parse_protect_system",
-      "valueKind": "string"
+      "valueKind": "enum",
+      "values": [
+        "true",
+        "false",
+        "yes",
+        "no",
+        "on",
+        "off",
+        "1",
+        "0",
+        "full",
+        "strict"
+      ]
     },
     {
       "section": "Mount",
@@ -1547,25 +1637,29 @@
       "section": "Mount",
       "name": "RestrictAddressFamilies",
       "parser": "config_parse_address_families",
-      "valueKind": "string"
+      "valueKind": "string",
+      "multiple": true
     },
     {
       "section": "Mount",
       "name": "RestrictFileSystems",
       "parser": "config_parse_restrict_filesystems",
-      "valueKind": "string"
+      "valueKind": "string",
+      "multiple": true
     },
     {
       "section": "Mount",
       "name": "RestrictNamespaces",
       "parser": "config_parse_namespace_flags",
-      "valueKind": "string"
+      "valueKind": "string",
+      "multiple": true
     },
     {
       "section": "Mount",
       "name": "RestrictNetworkInterfaces",
       "parser": "config_parse_restrict_network_interfaces",
-      "valueKind": "string"
+      "valueKind": "string",
+      "multiple": true
     },
     {
       "section": "Mount",
@@ -1768,9 +1862,14 @@
       "parser": "config_parse_tristate",
       "valueKind": "tristate",
       "values": [
+        "true",
+        "false",
         "yes",
         "no",
-        "auto"
+        "on",
+        "off",
+        "1",
+        "0"
       ]
     },
     {
@@ -1855,13 +1954,15 @@
       "section": "Mount",
       "name": "StandardInputData",
       "parser": "config_parse_exec_input_data",
-      "valueKind": "string"
+      "valueKind": "string",
+      "multiple": true
     },
     {
       "section": "Mount",
       "name": "StandardInputText",
       "parser": "config_parse_exec_input_text",
-      "valueKind": "string"
+      "valueKind": "string",
+      "multiple": true
     },
     {
       "section": "Mount",
@@ -1887,13 +1988,15 @@
       "section": "Mount",
       "name": "StartupAllowedCPUs",
       "parser": "config_parse_unit_cpu_set",
-      "valueKind": "string"
+      "valueKind": "string",
+      "multiple": true
     },
     {
       "section": "Mount",
       "name": "StartupAllowedMemoryNodes",
       "parser": "config_parse_unit_cpu_set",
-      "valueKind": "string"
+      "valueKind": "string",
+      "multiple": true
     },
     {
       "section": "Mount",
@@ -2029,7 +2132,8 @@
       "section": "Mount",
       "name": "SystemCallArchitectures",
       "parser": "config_parse_syscall_archs",
-      "valueKind": "string"
+      "valueKind": "string",
+      "multiple": true
     },
     {
       "section": "Mount",
@@ -2041,13 +2145,15 @@
       "section": "Mount",
       "name": "SystemCallFilter",
       "parser": "config_parse_syscall_filter",
-      "valueKind": "string"
+      "valueKind": "string",
+      "multiple": true
     },
     {
       "section": "Mount",
       "name": "SystemCallLog",
       "parser": "config_parse_syscall_log",
-      "valueKind": "string"
+      "valueKind": "string",
+      "multiple": true
     },
     {
       "section": "Mount",
@@ -2239,7 +2345,8 @@
       "section": "Path",
       "name": "DirectoryNotEmpty",
       "parser": "config_parse_path_spec",
-      "valueKind": "path"
+      "valueKind": "path",
+      "multiple": true
     },
     {
       "section": "Path",
@@ -2261,25 +2368,29 @@
       "section": "Path",
       "name": "PathChanged",
       "parser": "config_parse_path_spec",
-      "valueKind": "path"
+      "valueKind": "path",
+      "multiple": true
     },
     {
       "section": "Path",
       "name": "PathExists",
       "parser": "config_parse_path_spec",
-      "valueKind": "path"
+      "valueKind": "path",
+      "multiple": true
     },
     {
       "section": "Path",
       "name": "PathExistsGlob",
       "parser": "config_parse_path_spec",
-      "valueKind": "path"
+      "valueKind": "path",
+      "multiple": true
     },
     {
       "section": "Path",
       "name": "PathModified",
       "parser": "config_parse_path_spec",
-      "valueKind": "path"
+      "valueKind": "path",
+      "multiple": true
     },
     {
       "section": "Path",
@@ -2303,13 +2414,15 @@
       "section": "Scope",
       "name": "AllowedCPUs",
       "parser": "config_parse_unit_cpu_set",
-      "valueKind": "string"
+      "valueKind": "string",
+      "multiple": true
     },
     {
       "section": "Scope",
       "name": "AllowedMemoryNodes",
       "parser": "config_parse_unit_cpu_set",
-      "valueKind": "string"
+      "valueKind": "string",
+      "multiple": true
     },
     {
       "section": "Scope",
@@ -2472,7 +2585,8 @@
       "section": "Scope",
       "name": "Delegate",
       "parser": "config_parse_delegate",
-      "valueKind": "string"
+      "valueKind": "string",
+      "multiple": true
     },
     {
       "section": "Scope",
@@ -2531,13 +2645,15 @@
       "section": "Scope",
       "name": "IODeviceLatencyTargetSec",
       "parser": "config_parse_io_device_latency",
-      "valueKind": "duration"
+      "valueKind": "duration",
+      "multiple": true
     },
     {
       "section": "Scope",
       "name": "IODeviceWeight",
       "parser": "config_parse_io_device_weight",
-      "valueKind": "string"
+      "valueKind": "string",
+      "multiple": true
     },
     {
       "section": "Scope",
@@ -2577,13 +2693,15 @@
       "section": "Scope",
       "name": "IOReadBandwidthMax",
       "parser": "config_parse_io_limit",
-      "valueKind": "string"
+      "valueKind": "string",
+      "multiple": true
     },
     {
       "section": "Scope",
       "name": "IOReadIOPSMax",
       "parser": "config_parse_io_limit",
-      "valueKind": "string"
+      "valueKind": "string",
+      "multiple": true
     },
     {
       "section": "Scope",
@@ -2595,13 +2713,15 @@
       "section": "Scope",
       "name": "IOWriteBandwidthMax",
       "parser": "config_parse_io_limit",
-      "valueKind": "string"
+      "valueKind": "string",
+      "multiple": true
     },
     {
       "section": "Scope",
       "name": "IOWriteIOPSMax",
       "parser": "config_parse_io_limit",
-      "valueKind": "string"
+      "valueKind": "string",
+      "multiple": true
     },
     {
       "section": "Scope",
@@ -2798,7 +2918,8 @@
       "section": "Scope",
       "name": "NFTSet",
       "parser": "config_parse_cgroup_nft_set",
-      "valueKind": "string"
+      "valueKind": "string",
+      "multiple": true
     },
     {
       "section": "Scope",
@@ -2833,7 +2954,8 @@
       "section": "Scope",
       "name": "RestrictNetworkInterfaces",
       "parser": "config_parse_restrict_network_interfaces",
-      "valueKind": "string"
+      "valueKind": "string",
+      "multiple": true
     },
     {
       "section": "Scope",
@@ -2903,13 +3025,15 @@
       "section": "Scope",
       "name": "StartupAllowedCPUs",
       "parser": "config_parse_unit_cpu_set",
-      "valueKind": "string"
+      "valueKind": "string",
+      "multiple": true
     },
     {
       "section": "Scope",
       "name": "StartupAllowedMemoryNodes",
       "parser": "config_parse_unit_cpu_set",
-      "valueKind": "string"
+      "valueKind": "string",
+      "multiple": true
     },
     {
       "section": "Scope",
@@ -3003,13 +3127,15 @@
       "section": "Service",
       "name": "AllowedCPUs",
       "parser": "config_parse_unit_cpu_set",
-      "valueKind": "string"
+      "valueKind": "string",
+      "multiple": true
     },
     {
       "section": "Service",
       "name": "AllowedMemoryNodes",
       "parser": "config_parse_unit_cpu_set",
-      "valueKind": "string"
+      "valueKind": "string",
+      "multiple": true
     },
     {
       "section": "Service",
@@ -3065,9 +3191,14 @@
       "parser": "config_parse_tristate",
       "valueKind": "tristate",
       "values": [
+        "true",
+        "false",
         "yes",
         "no",
-        "auto"
+        "on",
+        "off",
+        "1",
+        "0"
       ]
     },
     {
@@ -3352,13 +3483,15 @@
       "section": "Service",
       "name": "Delegate",
       "parser": "config_parse_delegate",
-      "valueKind": "string"
+      "valueKind": "string",
+      "multiple": true
     },
     {
       "section": "Service",
       "name": "DelegateNamespaces",
       "parser": "config_parse_namespace_flags",
-      "valueKind": "string"
+      "valueKind": "string",
+      "multiple": true
     },
     {
       "section": "Service",
@@ -3604,13 +3737,15 @@
       "section": "Service",
       "name": "IODeviceLatencyTargetSec",
       "parser": "config_parse_io_device_latency",
-      "valueKind": "duration"
+      "valueKind": "duration",
+      "multiple": true
     },
     {
       "section": "Service",
       "name": "IODeviceWeight",
       "parser": "config_parse_io_device_weight",
-      "valueKind": "string"
+      "valueKind": "string",
+      "multiple": true
     },
     {
       "section": "Service",
@@ -3650,13 +3785,15 @@
       "section": "Service",
       "name": "IOReadBandwidthMax",
       "parser": "config_parse_io_limit",
-      "valueKind": "string"
+      "valueKind": "string",
+      "multiple": true
     },
     {
       "section": "Service",
       "name": "IOReadIOPSMax",
       "parser": "config_parse_io_limit",
-      "valueKind": "string"
+      "valueKind": "string",
+      "multiple": true
     },
     {
       "section": "Service",
@@ -3680,13 +3817,15 @@
       "section": "Service",
       "name": "IOWriteBandwidthMax",
       "parser": "config_parse_io_limit",
-      "valueKind": "string"
+      "valueKind": "string",
+      "multiple": true
     },
     {
       "section": "Service",
       "name": "IOWriteIOPSMax",
       "parser": "config_parse_io_limit",
-      "valueKind": "string"
+      "valueKind": "string",
+      "multiple": true
     },
     {
       "section": "Service",
@@ -4091,9 +4230,14 @@
       "parser": "config_parse_tristate",
       "valueKind": "tristate",
       "values": [
+        "true",
+        "false",
         "yes",
         "no",
-        "auto"
+        "on",
+        "off",
+        "1",
+        "0"
       ]
     },
     {
@@ -4172,9 +4316,14 @@
       "parser": "config_parse_tristate",
       "valueKind": "tristate",
       "values": [
+        "true",
+        "false",
         "yes",
         "no",
-        "auto"
+        "on",
+        "off",
+        "1",
+        "0"
       ]
     },
     {
@@ -4201,13 +4350,15 @@
       "section": "Service",
       "name": "NFTSet",
       "parser": "config_parse_cgroup_nft_set",
-      "valueKind": "string"
+      "valueKind": "string",
+      "multiple": true
     },
     {
       "section": "Service",
       "name": "NUMAMask",
       "parser": "config_parse_numa_mask",
-      "valueKind": "string"
+      "valueKind": "string",
+      "multiple": true
     },
     {
       "section": "Service",
@@ -4325,7 +4476,8 @@
       "section": "Service",
       "name": "OpenFile",
       "parser": "config_parse_open_file",
-      "valueKind": "string"
+      "valueKind": "string",
+      "multiple": true
     },
     {
       "section": "Service",
@@ -4413,9 +4565,14 @@
       "parser": "config_parse_tristate",
       "valueKind": "tristate",
       "values": [
+        "true",
+        "false",
         "yes",
         "no",
-        "auto"
+        "on",
+        "off",
+        "1",
+        "0"
       ]
     },
     {
@@ -4444,7 +4601,18 @@
       "section": "Service",
       "name": "PrivateTmp",
       "parser": "config_parse_private_tmp",
-      "valueKind": "string"
+      "valueKind": "enum",
+      "values": [
+        "true",
+        "false",
+        "yes",
+        "no",
+        "on",
+        "off",
+        "1",
+        "0",
+        "disconnected"
+      ]
     },
     {
       "section": "Service",
@@ -4497,19 +4665,54 @@
       "section": "Service",
       "name": "ProtectControlGroups",
       "parser": "config_parse_protect_control_groups",
-      "valueKind": "string"
+      "valueKind": "enum",
+      "values": [
+        "true",
+        "false",
+        "yes",
+        "no",
+        "on",
+        "off",
+        "1",
+        "0",
+        "private",
+        "strict"
+      ]
     },
     {
       "section": "Service",
       "name": "ProtectHome",
       "parser": "config_parse_protect_home",
-      "valueKind": "string"
+      "valueKind": "enum",
+      "values": [
+        "true",
+        "false",
+        "yes",
+        "no",
+        "on",
+        "off",
+        "1",
+        "0",
+        "read-only",
+        "tmpfs"
+      ]
     },
     {
       "section": "Service",
       "name": "ProtectHostname",
       "parser": "config_parse_protect_hostname",
-      "valueKind": "string"
+      "valueKind": "enum",
+      "values": [
+        "true",
+        "false",
+        "yes",
+        "no",
+        "on",
+        "off",
+        "1",
+        "0",
+        "private"
+      ]
     },
     {
       "section": "Service",
@@ -4569,7 +4772,19 @@
       "section": "Service",
       "name": "ProtectSystem",
       "parser": "config_parse_protect_system",
-      "valueKind": "string"
+      "valueKind": "enum",
+      "values": [
+        "true",
+        "false",
+        "yes",
+        "no",
+        "on",
+        "off",
+        "1",
+        "0",
+        "full",
+        "strict"
+      ]
     },
     {
       "section": "Service",
@@ -4687,7 +4902,8 @@
       "section": "Service",
       "name": "RestartForceExitStatus",
       "parser": "config_parse_set_status",
-      "valueKind": "string"
+      "valueKind": "string",
+      "multiple": true
     },
     {
       "section": "Service",
@@ -4716,7 +4932,8 @@
       "section": "Service",
       "name": "RestartPreventExitStatus",
       "parser": "config_parse_set_status",
-      "valueKind": "string"
+      "valueKind": "string",
+      "multiple": true
     },
     {
       "section": "Service",
@@ -4745,25 +4962,29 @@
       "section": "Service",
       "name": "RestrictAddressFamilies",
       "parser": "config_parse_address_families",
-      "valueKind": "string"
+      "valueKind": "string",
+      "multiple": true
     },
     {
       "section": "Service",
       "name": "RestrictFileSystems",
       "parser": "config_parse_restrict_filesystems",
-      "valueKind": "string"
+      "valueKind": "string",
+      "multiple": true
     },
     {
       "section": "Service",
       "name": "RestrictNamespaces",
       "parser": "config_parse_namespace_flags",
-      "valueKind": "string"
+      "valueKind": "string",
+      "multiple": true
     },
     {
       "section": "Service",
       "name": "RestrictNetworkInterfaces",
       "parser": "config_parse_restrict_network_interfaces",
-      "valueKind": "string"
+      "valueKind": "string",
+      "multiple": true
     },
     {
       "section": "Service",
@@ -4994,9 +5215,14 @@
       "parser": "config_parse_tristate",
       "valueKind": "tristate",
       "values": [
+        "true",
+        "false",
         "yes",
         "no",
-        "auto"
+        "on",
+        "off",
+        "1",
+        "0"
       ]
     },
     {
@@ -5029,7 +5255,8 @@
       "section": "Service",
       "name": "Sockets",
       "parser": "config_parse_service_sockets",
-      "valueKind": "socket"
+      "valueKind": "socket",
+      "multiple": true
     },
     {
       "section": "Service",
@@ -5071,13 +5298,15 @@
       "section": "Service",
       "name": "StandardInputData",
       "parser": "config_parse_exec_input_data",
-      "valueKind": "string"
+      "valueKind": "string",
+      "multiple": true
     },
     {
       "section": "Service",
       "name": "StandardInputText",
       "parser": "config_parse_exec_input_text",
-      "valueKind": "string"
+      "valueKind": "string",
+      "multiple": true
     },
     {
       "section": "Service",
@@ -5121,13 +5350,15 @@
       "section": "Service",
       "name": "StartupAllowedCPUs",
       "parser": "config_parse_unit_cpu_set",
-      "valueKind": "string"
+      "valueKind": "string",
+      "multiple": true
     },
     {
       "section": "Service",
       "name": "StartupAllowedMemoryNodes",
       "parser": "config_parse_unit_cpu_set",
-      "valueKind": "string"
+      "valueKind": "string",
+      "multiple": true
     },
     {
       "section": "Service",
@@ -5222,7 +5453,8 @@
       "section": "Service",
       "name": "SuccessExitStatus",
       "parser": "config_parse_set_status",
-      "valueKind": "string"
+      "valueKind": "string",
+      "multiple": true
     },
     {
       "section": "Service",
@@ -5275,7 +5507,8 @@
       "section": "Service",
       "name": "SystemCallArchitectures",
       "parser": "config_parse_syscall_archs",
-      "valueKind": "string"
+      "valueKind": "string",
+      "multiple": true
     },
     {
       "section": "Service",
@@ -5287,13 +5520,15 @@
       "section": "Service",
       "name": "SystemCallFilter",
       "parser": "config_parse_syscall_filter",
-      "valueKind": "string"
+      "valueKind": "string",
+      "multiple": true
     },
     {
       "section": "Service",
       "name": "SystemCallLog",
       "parser": "config_parse_syscall_log",
-      "valueKind": "string"
+      "valueKind": "string",
+      "multiple": true
     },
     {
       "section": "Service",
@@ -5540,13 +5775,15 @@
       "section": "Slice",
       "name": "AllowedCPUs",
       "parser": "config_parse_unit_cpu_set",
-      "valueKind": "string"
+      "valueKind": "string",
+      "multiple": true
     },
     {
       "section": "Slice",
       "name": "AllowedMemoryNodes",
       "parser": "config_parse_unit_cpu_set",
-      "valueKind": "string"
+      "valueKind": "string",
+      "multiple": true
     },
     {
       "section": "Slice",
@@ -5721,7 +5958,8 @@
       "section": "Slice",
       "name": "Delegate",
       "parser": "config_parse_delegate",
-      "valueKind": "string"
+      "valueKind": "string",
+      "multiple": true
     },
     {
       "section": "Slice",
@@ -5774,13 +6012,15 @@
       "section": "Slice",
       "name": "IODeviceLatencyTargetSec",
       "parser": "config_parse_io_device_latency",
-      "valueKind": "duration"
+      "valueKind": "duration",
+      "multiple": true
     },
     {
       "section": "Slice",
       "name": "IODeviceWeight",
       "parser": "config_parse_io_device_weight",
-      "valueKind": "string"
+      "valueKind": "string",
+      "multiple": true
     },
     {
       "section": "Slice",
@@ -5820,13 +6060,15 @@
       "section": "Slice",
       "name": "IOReadBandwidthMax",
       "parser": "config_parse_io_limit",
-      "valueKind": "string"
+      "valueKind": "string",
+      "multiple": true
     },
     {
       "section": "Slice",
       "name": "IOReadIOPSMax",
       "parser": "config_parse_io_limit",
-      "valueKind": "string"
+      "valueKind": "string",
+      "multiple": true
     },
     {
       "section": "Slice",
@@ -5838,13 +6080,15 @@
       "section": "Slice",
       "name": "IOWriteBandwidthMax",
       "parser": "config_parse_io_limit",
-      "valueKind": "string"
+      "valueKind": "string",
+      "multiple": true
     },
     {
       "section": "Slice",
       "name": "IOWriteIOPSMax",
       "parser": "config_parse_io_limit",
-      "valueKind": "string"
+      "valueKind": "string",
+      "multiple": true
     },
     {
       "section": "Slice",
@@ -6023,7 +6267,8 @@
       "section": "Slice",
       "name": "NFTSet",
       "parser": "config_parse_cgroup_nft_set",
-      "valueKind": "string"
+      "valueKind": "string",
+      "multiple": true
     },
     {
       "section": "Slice",
@@ -6041,7 +6286,8 @@
       "section": "Slice",
       "name": "RestrictNetworkInterfaces",
       "parser": "config_parse_restrict_network_interfaces",
-      "valueKind": "string"
+      "valueKind": "string",
+      "multiple": true
     },
     {
       "section": "Slice",
@@ -6067,13 +6313,15 @@
       "section": "Slice",
       "name": "StartupAllowedCPUs",
       "parser": "config_parse_unit_cpu_set",
-      "valueKind": "string"
+      "valueKind": "string",
+      "multiple": true
     },
     {
       "section": "Slice",
       "name": "StartupAllowedMemoryNodes",
       "parser": "config_parse_unit_cpu_set",
-      "valueKind": "string"
+      "valueKind": "string",
+      "multiple": true
     },
     {
       "section": "Slice",
@@ -6187,13 +6435,15 @@
       "section": "Socket",
       "name": "AllowedCPUs",
       "parser": "config_parse_unit_cpu_set",
-      "valueKind": "string"
+      "valueKind": "string",
+      "multiple": true
     },
     {
       "section": "Socket",
       "name": "AllowedMemoryNodes",
       "parser": "config_parse_unit_cpu_set",
-      "valueKind": "string"
+      "valueKind": "string",
+      "multiple": true
     },
     {
       "section": "Socket",
@@ -6266,9 +6516,14 @@
       "parser": "config_parse_tristate",
       "valueKind": "tristate",
       "values": [
+        "true",
+        "false",
         "yes",
         "no",
-        "auto"
+        "on",
+        "off",
+        "1",
+        "0"
       ]
     },
     {
@@ -6581,13 +6836,15 @@
       "section": "Socket",
       "name": "Delegate",
       "parser": "config_parse_delegate",
-      "valueKind": "string"
+      "valueKind": "string",
+      "multiple": true
     },
     {
       "section": "Socket",
       "name": "DelegateNamespaces",
       "parser": "config_parse_namespace_flags",
-      "valueKind": "string"
+      "valueKind": "string",
+      "multiple": true
     },
     {
       "section": "Socket",
@@ -6789,13 +7046,15 @@
       "section": "Socket",
       "name": "IODeviceLatencyTargetSec",
       "parser": "config_parse_io_device_latency",
-      "valueKind": "duration"
+      "valueKind": "duration",
+      "multiple": true
     },
     {
       "section": "Socket",
       "name": "IODeviceWeight",
       "parser": "config_parse_io_device_weight",
-      "valueKind": "string"
+      "valueKind": "string",
+      "multiple": true
     },
     {
       "section": "Socket",
@@ -6835,13 +7094,15 @@
       "section": "Socket",
       "name": "IOReadBandwidthMax",
       "parser": "config_parse_io_limit",
-      "valueKind": "string"
+      "valueKind": "string",
+      "multiple": true
     },
     {
       "section": "Socket",
       "name": "IOReadIOPSMax",
       "parser": "config_parse_io_limit",
-      "valueKind": "string"
+      "valueKind": "string",
+      "multiple": true
     },
     {
       "section": "Socket",
@@ -6865,13 +7126,15 @@
       "section": "Socket",
       "name": "IOWriteBandwidthMax",
       "parser": "config_parse_io_limit",
-      "valueKind": "string"
+      "valueKind": "string",
+      "multiple": true
     },
     {
       "section": "Socket",
       "name": "IOWriteIOPSMax",
       "parser": "config_parse_io_limit",
-      "valueKind": "string"
+      "valueKind": "string",
+      "multiple": true
     },
     {
       "section": "Socket",
@@ -7130,49 +7393,57 @@
       "section": "Socket",
       "name": "ListenDatagram",
       "parser": "config_parse_socket_listen",
-      "valueKind": "socket"
+      "valueKind": "socket",
+      "multiple": true
     },
     {
       "section": "Socket",
       "name": "ListenFIFO",
       "parser": "config_parse_socket_listen",
-      "valueKind": "socket"
+      "valueKind": "socket",
+      "multiple": true
     },
     {
       "section": "Socket",
       "name": "ListenMessageQueue",
       "parser": "config_parse_socket_listen",
-      "valueKind": "socket"
+      "valueKind": "socket",
+      "multiple": true
     },
     {
       "section": "Socket",
       "name": "ListenNetlink",
       "parser": "config_parse_socket_listen",
-      "valueKind": "socket"
+      "valueKind": "socket",
+      "multiple": true
     },
     {
       "section": "Socket",
       "name": "ListenSequentialPacket",
       "parser": "config_parse_socket_listen",
-      "valueKind": "socket"
+      "valueKind": "socket",
+      "multiple": true
     },
     {
       "section": "Socket",
       "name": "ListenSpecial",
       "parser": "config_parse_socket_listen",
-      "valueKind": "socket"
+      "valueKind": "socket",
+      "multiple": true
     },
     {
       "section": "Socket",
       "name": "ListenStream",
       "parser": "config_parse_socket_listen",
-      "valueKind": "socket"
+      "valueKind": "socket",
+      "multiple": true
     },
     {
       "section": "Socket",
       "name": "ListenUSBFunction",
       "parser": "config_parse_socket_listen",
-      "valueKind": "socket"
+      "valueKind": "socket",
+      "multiple": true
     },
     {
       "section": "Socket",
@@ -7382,9 +7653,14 @@
       "parser": "config_parse_tristate",
       "valueKind": "tristate",
       "values": [
+        "true",
+        "false",
         "yes",
         "no",
-        "auto"
+        "on",
+        "off",
+        "1",
+        "0"
       ]
     },
     {
@@ -7475,9 +7751,14 @@
       "parser": "config_parse_tristate",
       "valueKind": "tristate",
       "values": [
+        "true",
+        "false",
         "yes",
         "no",
-        "auto"
+        "on",
+        "off",
+        "1",
+        "0"
       ]
     },
     {
@@ -7504,13 +7785,15 @@
       "section": "Socket",
       "name": "NFTSet",
       "parser": "config_parse_cgroup_nft_set",
-      "valueKind": "string"
+      "valueKind": "string",
+      "multiple": true
     },
     {
       "section": "Socket",
       "name": "NUMAMask",
       "parser": "config_parse_numa_mask",
-      "valueKind": "string"
+      "valueKind": "string",
+      "multiple": true
     },
     {
       "section": "Socket",
@@ -7769,9 +8052,14 @@
       "parser": "config_parse_tristate",
       "valueKind": "tristate",
       "values": [
+        "true",
+        "false",
         "yes",
         "no",
-        "auto"
+        "on",
+        "off",
+        "1",
+        "0"
       ]
     },
     {
@@ -7800,7 +8088,18 @@
       "section": "Socket",
       "name": "PrivateTmp",
       "parser": "config_parse_private_tmp",
-      "valueKind": "string"
+      "valueKind": "enum",
+      "values": [
+        "true",
+        "false",
+        "yes",
+        "no",
+        "on",
+        "off",
+        "1",
+        "0",
+        "disconnected"
+      ]
     },
     {
       "section": "Socket",
@@ -7853,19 +8152,54 @@
       "section": "Socket",
       "name": "ProtectControlGroups",
       "parser": "config_parse_protect_control_groups",
-      "valueKind": "string"
+      "valueKind": "enum",
+      "values": [
+        "true",
+        "false",
+        "yes",
+        "no",
+        "on",
+        "off",
+        "1",
+        "0",
+        "private",
+        "strict"
+      ]
     },
     {
       "section": "Socket",
       "name": "ProtectHome",
       "parser": "config_parse_protect_home",
-      "valueKind": "string"
+      "valueKind": "enum",
+      "values": [
+        "true",
+        "false",
+        "yes",
+        "no",
+        "on",
+        "off",
+        "1",
+        "0",
+        "read-only",
+        "tmpfs"
+      ]
     },
     {
       "section": "Socket",
       "name": "ProtectHostname",
       "parser": "config_parse_protect_hostname",
-      "valueKind": "string"
+      "valueKind": "enum",
+      "values": [
+        "true",
+        "false",
+        "yes",
+        "no",
+        "on",
+        "off",
+        "1",
+        "0",
+        "private"
+      ]
     },
     {
       "section": "Socket",
@@ -7925,7 +8259,19 @@
       "section": "Socket",
       "name": "ProtectSystem",
       "parser": "config_parse_protect_system",
-      "valueKind": "string"
+      "valueKind": "enum",
+      "values": [
+        "true",
+        "false",
+        "yes",
+        "no",
+        "on",
+        "off",
+        "1",
+        "0",
+        "full",
+        "strict"
+      ]
     },
     {
       "section": "Socket",
@@ -8003,25 +8349,29 @@
       "section": "Socket",
       "name": "RestrictAddressFamilies",
       "parser": "config_parse_address_families",
-      "valueKind": "string"
+      "valueKind": "string",
+      "multiple": true
     },
     {
       "section": "Socket",
       "name": "RestrictFileSystems",
       "parser": "config_parse_restrict_filesystems",
-      "valueKind": "string"
+      "valueKind": "string",
+      "multiple": true
     },
     {
       "section": "Socket",
       "name": "RestrictNamespaces",
       "parser": "config_parse_namespace_flags",
-      "valueKind": "string"
+      "valueKind": "string",
+      "multiple": true
     },
     {
       "section": "Socket",
       "name": "RestrictNetworkInterfaces",
       "parser": "config_parse_restrict_network_interfaces",
-      "valueKind": "string"
+      "valueKind": "string",
+      "multiple": true
     },
     {
       "section": "Socket",
@@ -8268,9 +8618,14 @@
       "parser": "config_parse_tristate",
       "valueKind": "tristate",
       "values": [
+        "true",
+        "false",
         "yes",
         "no",
-        "auto"
+        "on",
+        "off",
+        "1",
+        "0"
       ]
     },
     {
@@ -8381,13 +8736,15 @@
       "section": "Socket",
       "name": "StandardInputData",
       "parser": "config_parse_exec_input_data",
-      "valueKind": "string"
+      "valueKind": "string",
+      "multiple": true
     },
     {
       "section": "Socket",
       "name": "StandardInputText",
       "parser": "config_parse_exec_input_text",
-      "valueKind": "string"
+      "valueKind": "string",
+      "multiple": true
     },
     {
       "section": "Socket",
@@ -8413,13 +8770,15 @@
       "section": "Socket",
       "name": "StartupAllowedCPUs",
       "parser": "config_parse_unit_cpu_set",
-      "valueKind": "string"
+      "valueKind": "string",
+      "multiple": true
     },
     {
       "section": "Socket",
       "name": "StartupAllowedMemoryNodes",
       "parser": "config_parse_unit_cpu_set",
-      "valueKind": "string"
+      "valueKind": "string",
+      "multiple": true
     },
     {
       "section": "Socket",
@@ -8562,7 +8921,8 @@
       "section": "Socket",
       "name": "SystemCallArchitectures",
       "parser": "config_parse_syscall_archs",
-      "valueKind": "string"
+      "valueKind": "string",
+      "multiple": true
     },
     {
       "section": "Socket",
@@ -8574,13 +8934,15 @@
       "section": "Socket",
       "name": "SystemCallFilter",
       "parser": "config_parse_syscall_filter",
-      "valueKind": "string"
+      "valueKind": "string",
+      "multiple": true
     },
     {
       "section": "Socket",
       "name": "SystemCallLog",
       "parser": "config_parse_syscall_log",
-      "valueKind": "string"
+      "valueKind": "string",
+      "multiple": true
     },
     {
       "section": "Socket",
@@ -8822,13 +9184,15 @@
       "section": "Swap",
       "name": "AllowedCPUs",
       "parser": "config_parse_unit_cpu_set",
-      "valueKind": "string"
+      "valueKind": "string",
+      "multiple": true
     },
     {
       "section": "Swap",
       "name": "AllowedMemoryNodes",
       "parser": "config_parse_unit_cpu_set",
-      "valueKind": "string"
+      "valueKind": "string",
+      "multiple": true
     },
     {
       "section": "Swap",
@@ -8884,9 +9248,14 @@
       "parser": "config_parse_tristate",
       "valueKind": "tristate",
       "values": [
+        "true",
+        "false",
         "yes",
         "no",
-        "auto"
+        "on",
+        "off",
+        "1",
+        "0"
       ]
     },
     {
@@ -9159,13 +9528,15 @@
       "section": "Swap",
       "name": "Delegate",
       "parser": "config_parse_delegate",
-      "valueKind": "string"
+      "valueKind": "string",
+      "multiple": true
     },
     {
       "section": "Swap",
       "name": "DelegateNamespaces",
       "parser": "config_parse_namespace_flags",
-      "valueKind": "string"
+      "valueKind": "string",
+      "multiple": true
     },
     {
       "section": "Swap",
@@ -9295,13 +9666,15 @@
       "section": "Swap",
       "name": "IODeviceLatencyTargetSec",
       "parser": "config_parse_io_device_latency",
-      "valueKind": "duration"
+      "valueKind": "duration",
+      "multiple": true
     },
     {
       "section": "Swap",
       "name": "IODeviceWeight",
       "parser": "config_parse_io_device_weight",
-      "valueKind": "string"
+      "valueKind": "string",
+      "multiple": true
     },
     {
       "section": "Swap",
@@ -9341,13 +9714,15 @@
       "section": "Swap",
       "name": "IOReadBandwidthMax",
       "parser": "config_parse_io_limit",
-      "valueKind": "string"
+      "valueKind": "string",
+      "multiple": true
     },
     {
       "section": "Swap",
       "name": "IOReadIOPSMax",
       "parser": "config_parse_io_limit",
-      "valueKind": "string"
+      "valueKind": "string",
+      "multiple": true
     },
     {
       "section": "Swap",
@@ -9371,13 +9746,15 @@
       "section": "Swap",
       "name": "IOWriteBandwidthMax",
       "parser": "config_parse_io_limit",
-      "valueKind": "string"
+      "valueKind": "string",
+      "multiple": true
     },
     {
       "section": "Swap",
       "name": "IOWriteIOPSMax",
       "parser": "config_parse_io_limit",
-      "valueKind": "string"
+      "valueKind": "string",
+      "multiple": true
     },
     {
       "section": "Swap",
@@ -9776,9 +10153,14 @@
       "parser": "config_parse_tristate",
       "valueKind": "tristate",
       "values": [
+        "true",
+        "false",
         "yes",
         "no",
-        "auto"
+        "on",
+        "off",
+        "1",
+        "0"
       ]
     },
     {
@@ -9857,9 +10239,14 @@
       "parser": "config_parse_tristate",
       "valueKind": "tristate",
       "values": [
+        "true",
+        "false",
         "yes",
         "no",
-        "auto"
+        "on",
+        "off",
+        "1",
+        "0"
       ]
     },
     {
@@ -9886,13 +10273,15 @@
       "section": "Swap",
       "name": "NFTSet",
       "parser": "config_parse_cgroup_nft_set",
-      "valueKind": "string"
+      "valueKind": "string",
+      "multiple": true
     },
     {
       "section": "Swap",
       "name": "NUMAMask",
       "parser": "config_parse_numa_mask",
-      "valueKind": "string"
+      "valueKind": "string",
+      "multiple": true
     },
     {
       "section": "Swap",
@@ -10043,9 +10432,14 @@
       "parser": "config_parse_tristate",
       "valueKind": "tristate",
       "values": [
+        "true",
+        "false",
         "yes",
         "no",
-        "auto"
+        "on",
+        "off",
+        "1",
+        "0"
       ]
     },
     {
@@ -10074,7 +10468,18 @@
       "section": "Swap",
       "name": "PrivateTmp",
       "parser": "config_parse_private_tmp",
-      "valueKind": "string"
+      "valueKind": "enum",
+      "values": [
+        "true",
+        "false",
+        "yes",
+        "no",
+        "on",
+        "off",
+        "1",
+        "0",
+        "disconnected"
+      ]
     },
     {
       "section": "Swap",
@@ -10127,19 +10532,54 @@
       "section": "Swap",
       "name": "ProtectControlGroups",
       "parser": "config_parse_protect_control_groups",
-      "valueKind": "string"
+      "valueKind": "enum",
+      "values": [
+        "true",
+        "false",
+        "yes",
+        "no",
+        "on",
+        "off",
+        "1",
+        "0",
+        "private",
+        "strict"
+      ]
     },
     {
       "section": "Swap",
       "name": "ProtectHome",
       "parser": "config_parse_protect_home",
-      "valueKind": "string"
+      "valueKind": "enum",
+      "values": [
+        "true",
+        "false",
+        "yes",
+        "no",
+        "on",
+        "off",
+        "1",
+        "0",
+        "read-only",
+        "tmpfs"
+      ]
     },
     {
       "section": "Swap",
       "name": "ProtectHostname",
       "parser": "config_parse_protect_hostname",
-      "valueKind": "string"
+      "valueKind": "enum",
+      "values": [
+        "true",
+        "false",
+        "yes",
+        "no",
+        "on",
+        "off",
+        "1",
+        "0",
+        "private"
+      ]
     },
     {
       "section": "Swap",
@@ -10199,7 +10639,19 @@
       "section": "Swap",
       "name": "ProtectSystem",
       "parser": "config_parse_protect_system",
-      "valueKind": "string"
+      "valueKind": "enum",
+      "values": [
+        "true",
+        "false",
+        "yes",
+        "no",
+        "on",
+        "off",
+        "1",
+        "0",
+        "full",
+        "strict"
+      ]
     },
     {
       "section": "Swap",
@@ -10255,25 +10707,29 @@
       "section": "Swap",
       "name": "RestrictAddressFamilies",
       "parser": "config_parse_address_families",
-      "valueKind": "string"
+      "valueKind": "string",
+      "multiple": true
     },
     {
       "section": "Swap",
       "name": "RestrictFileSystems",
       "parser": "config_parse_restrict_filesystems",
-      "valueKind": "string"
+      "valueKind": "string",
+      "multiple": true
     },
     {
       "section": "Swap",
       "name": "RestrictNamespaces",
       "parser": "config_parse_namespace_flags",
-      "valueKind": "string"
+      "valueKind": "string",
+      "multiple": true
     },
     {
       "section": "Swap",
       "name": "RestrictNetworkInterfaces",
       "parser": "config_parse_restrict_network_interfaces",
-      "valueKind": "string"
+      "valueKind": "string",
+      "multiple": true
     },
     {
       "section": "Swap",
@@ -10476,9 +10932,14 @@
       "parser": "config_parse_tristate",
       "valueKind": "tristate",
       "values": [
+        "true",
+        "false",
         "yes",
         "no",
-        "auto"
+        "on",
+        "off",
+        "1",
+        "0"
       ]
     },
     {
@@ -10547,13 +11008,15 @@
       "section": "Swap",
       "name": "StandardInputData",
       "parser": "config_parse_exec_input_data",
-      "valueKind": "string"
+      "valueKind": "string",
+      "multiple": true
     },
     {
       "section": "Swap",
       "name": "StandardInputText",
       "parser": "config_parse_exec_input_text",
-      "valueKind": "string"
+      "valueKind": "string",
+      "multiple": true
     },
     {
       "section": "Swap",
@@ -10579,13 +11042,15 @@
       "section": "Swap",
       "name": "StartupAllowedCPUs",
       "parser": "config_parse_unit_cpu_set",
-      "valueKind": "string"
+      "valueKind": "string",
+      "multiple": true
     },
     {
       "section": "Swap",
       "name": "StartupAllowedMemoryNodes",
       "parser": "config_parse_unit_cpu_set",
-      "valueKind": "string"
+      "valueKind": "string",
+      "multiple": true
     },
     {
       "section": "Swap",
@@ -10721,7 +11186,8 @@
       "section": "Swap",
       "name": "SystemCallArchitectures",
       "parser": "config_parse_syscall_archs",
-      "valueKind": "string"
+      "valueKind": "string",
+      "multiple": true
     },
     {
       "section": "Swap",
@@ -10733,13 +11199,15 @@
       "section": "Swap",
       "name": "SystemCallFilter",
       "parser": "config_parse_syscall_filter",
-      "valueKind": "string"
+      "valueKind": "string",
+      "multiple": true
     },
     {
       "section": "Swap",
       "name": "SystemCallLog",
       "parser": "config_parse_syscall_log",
-      "valueKind": "string"
+      "valueKind": "string",
+      "multiple": true
     },
     {
       "section": "Swap",
@@ -10951,19 +11419,22 @@
       "section": "Timer",
       "name": "OnActiveSec",
       "parser": "config_parse_timer",
-      "valueKind": "duration"
+      "valueKind": "duration",
+      "multiple": true
     },
     {
       "section": "Timer",
       "name": "OnBootSec",
       "parser": "config_parse_timer",
-      "valueKind": "duration"
+      "valueKind": "duration",
+      "multiple": true
     },
     {
       "section": "Timer",
       "name": "OnCalendar",
       "parser": "config_parse_timer",
-      "valueKind": "timer"
+      "valueKind": "timer",
+      "multiple": true
     },
     {
       "section": "Timer",
@@ -10985,7 +11456,8 @@
       "section": "Timer",
       "name": "OnStartupSec",
       "parser": "config_parse_timer",
-      "valueKind": "duration"
+      "valueKind": "duration",
+      "multiple": true
     },
     {
       "section": "Timer",
@@ -11007,13 +11479,15 @@
       "section": "Timer",
       "name": "OnUnitActiveSec",
       "parser": "config_parse_timer",
-      "valueKind": "duration"
+      "valueKind": "duration",
+      "multiple": true
     },
     {
       "section": "Timer",
       "name": "OnUnitInactiveSec",
       "parser": "config_parse_timer",
-      "valueKind": "duration"
+      "valueKind": "duration",
+      "multiple": true
     },
     {
       "section": "Timer",
@@ -11912,7 +12386,8 @@
       "section": "Unit",
       "name": "RequiresMountsFor",
       "parser": "config_parse_unit_mounts_for",
-      "valueKind": "string"
+      "valueKind": "string",
+      "multiple": true
     },
     {
       "section": "Unit",
@@ -12034,7 +12509,8 @@
       "section": "Unit",
       "name": "WantsMountsFor",
       "parser": "config_parse_unit_mounts_for",
-      "valueKind": "string"
+      "valueKind": "string",
+      "multiple": true
     }
   ]
 }

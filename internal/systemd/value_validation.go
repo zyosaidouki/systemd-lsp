@@ -61,7 +61,7 @@ func validateDirectiveValue(d Directive, value string) string {
 			}
 		}
 	default:
-		if len(d.Values) > 0 && shouldValidateValue(d, value) && !containsFold(d.Values, value) {
+		if len(d.Values) > 0 && shouldValidateValue(d, value) && !containsFold(d.Values, value) && !(isBoolDirective(d) && isShortBoolean(value)) {
 			return unexpected()
 		}
 	}
@@ -72,14 +72,20 @@ func validEnumValue(values []string, value string) bool {
 	if contains(values, value) {
 		return true
 	}
-	if contains(values, "true") && contains(values, "false") {
-		switch strings.ToLower(value) {
-		case "y", "n", "t", "f":
-			return true
-		}
+	if contains(values, "true") && contains(values, "false") && isShortBoolean(value) {
+		return true
 	}
 	// Boolean spellings are case-insensitive; symbolic enum values are not.
 	return containsFold(boolValues, value) && containsFold(values, value)
+}
+
+// parse_boolean() also accepts these single letters, in any case.
+func isShortBoolean(value string) bool {
+	switch strings.ToLower(value) {
+	case "y", "n", "t", "f":
+		return true
+	}
+	return false
 }
 
 // Match safe_atou(): decimal, C-style octal, and 0x/0o/0b prefixes. Go's

@@ -304,6 +304,13 @@ func (s *Server) publishDiagnostics(uri string) [][]byte {
 		return nil
 	}
 	unitType := unitTypeFromURI(uri)
+	if !s.catalog.SupportsUnitType(unitType) {
+		// Editors also use the systemd filetype for formats such as .network.
+		return [][]byte{notification("textDocument/publishDiagnostics", map[string]any{
+			"uri":         uri,
+			"diagnostics": []Diagnostic{},
+		})}
+	}
 	diagnose := systemd.Diagnostics
 	if isDropInURI(uri) {
 		diagnose = systemd.DropInDiagnostics
@@ -321,12 +328,26 @@ func (s *Server) completion(p TextDocumentPositionParams) any {
 	line := lineAt(doc, p.Position.Line)
 	before := prefixAt(line, p.Position.Character)
 	trimmed := strings.TrimLeft(before, " \t")
-	if isContinuationLine(doc, p.Position.Line) {
-		// The line is part of the value of the directive above it.
+	switch lineKind(doc, p.Position.Line) {
+	case systemd.EntryComment, systemd.EntryContinuation:
+		// Comments take no directives, and a continuation line is part of the
+		// value of the directive above it.
+		return []CompletionItem{}
+	}
+	if !s.catalog.SupportsUnitType(unitType) {
 		return []CompletionItem{}
 	}
 
 	if strings.HasPrefix(trimmed, "[") {
+		// Replace the header typed so far. [ is not a word character, so
+		// without an explicit range clients would keep it and insert a second
+		// one. The range ends at the cursor because some clients ignore
+		// anything beyond it; a bracket the editor already paired is kept.
+		headerRange := Range{
+			Start: Position{Line: p.Position.Line, Character: systemd.UTF16Length(before[:len(before)-len(trimmed)])},
+			End:   Position{Line: p.Position.Line, Character: systemd.UTF16Length(before)},
+		}
+		closed := strings.HasPrefix(line[len(before):], "]")
 		items := make([]CompletionItem, 0, len(s.catalog.SectionsFor(unitType)))
 		for _, section := range s.catalog.SectionsFor(unitType) {
 			insertText, insertTextFormat := s.completionInsertText("[" + section + "]")
@@ -341,7 +362,14 @@ func (s *Server) completion(p TextDocumentPositionParams) any {
 				Documentation:    s.catalog.SectionDocumentationFor(section, s.locale),
 				InsertText:       insertText,
 				InsertTextFormat: insertTextFormat,
+				TextEdit:         &TextEdit{Range: headerRange, NewText: insertText},
 			})
+			if closed {
+				// Plain text: clients complete snippet items from the label.
+				item := &items[len(items)-1]
+				item.InsertText, item.InsertTextFormat = "["+section, InsertTextFormatPlainText
+				item.TextEdit.NewText = item.InsertText
+			}
 		}
 		return items
 	}
@@ -385,7 +413,7 @@ func (s *Server) hover(p TextDocumentPositionParams) any {
 	doc := s.docs[p.TextDocument.URI]
 	line := lineAt(doc, p.Position.Line)
 	wordRange, word := wordAt(line, len(prefixAt(line, p.Position.Character)))
-	if word == "" || isContinuationLine(doc, p.Position.Line) {
+	if word == "" || lineKind(doc, p.Position.Line) == systemd.EntryContinuation || !s.catalog.SupportsUnitType(unitTypeFromURI(p.TextDocument.URI)) {
 		return nil
 	}
 	hoverRange := &Range{
@@ -545,9 +573,12 @@ func prefixAt(line string, character int) string {
 	return line
 }
 
-func isContinuationLine(text string, lineNo int) bool {
+func lineKind(text string, lineNo int) systemd.EntryKind {
 	entries := systemd.Parse(text).Entries
-	return lineNo >= 0 && lineNo < len(entries) && entries[lineNo].Kind == systemd.EntryContinuation
+	if lineNo < 0 || lineNo >= len(entries) {
+		return systemd.EntryUnknown
+	}
+	return entries[lineNo].Kind
 }
 
 func sectionAt(catalog *systemd.Catalog, text string, lineNo int) string {

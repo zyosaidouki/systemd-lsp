@@ -536,3 +536,83 @@ func TestDropInDoesNotWarnAboutMissingPIDFile(t *testing.T) {
 		t.Fatalf("diagnostics = %#v, want one hint", msg.Params.Diagnostics)
 	}
 }
+
+func TestSectionCompletionReplacesTypedHeader(t *testing.T) {
+	server := NewServer(systemd.NewCatalog(), nil)
+	uri := "file:///tmp/demo.service"
+	for _, tc := range []struct {
+		line      string
+		character int
+		newText   string
+	}{
+		{"  [Ser", 6, "[Service]"},
+		// A bracket the editor paired stays in place.
+		{"[Ser]", 4, "[Service"},
+	} {
+		openDocument(t, server, uri, "[Unit]\n"+tc.line+"\n")
+		var items []CompletionItem
+		request(t, server, "textDocument/completion", TextDocumentPositionParams{
+			TextDocument: TextDocumentIdentifier{URI: uri}, Position: Position{Line: 1, Character: tc.character},
+		}, &items)
+		var service *CompletionItem
+		for i := range items {
+			if items[i].Label == "[Service]" {
+				service = &items[i]
+			}
+		}
+		if service == nil || service.TextEdit == nil {
+			t.Fatalf("%q: no [Service] item with a text edit: %#v", tc.line, items)
+		}
+		edit := service.TextEdit
+		start := strings.Index(tc.line, "[")
+		if service.InsertTextFormat != InsertTextFormatPlainText {
+			t.Fatalf("%q: insertTextFormat = %d, want plain text without snippet support", tc.line, service.InsertTextFormat)
+		}
+		if edit.NewText != tc.newText || edit.Range.Start.Character != start || edit.Range.End.Character != tc.character {
+			t.Fatalf("%q: edit = %#v, want %q over %d-%d", tc.line, edit, tc.newText, start, tc.character)
+		}
+	}
+}
+
+func TestCommentLinesOfferNoCompletion(t *testing.T) {
+	server := NewServer(systemd.NewCatalog(), nil)
+	uri := "file:///tmp/demo.service"
+	openDocument(t, server, uri, "[Service]\n# see the \n")
+	var items []CompletionItem
+	request(t, server, "textDocument/completion", TextDocumentPositionParams{
+		TextDocument: TextDocumentIdentifier{URI: uri}, Position: Position{Line: 1, Character: 10},
+	}, &items)
+	if len(items) != 0 {
+		t.Fatalf("completion in a comment returned %d items, want none", len(items))
+	}
+}
+
+func TestOtherSystemdFormatsAreLeftAlone(t *testing.T) {
+	server := NewServer(systemd.NewCatalog(), nil)
+	for _, uri := range []string{"file:///etc/systemd/network/10-eth.network", "file:///etc/systemd/network/br0.netdev", "file:///etc/systemd/journald.conf"} {
+		payload, err := json.Marshal(map[string]any{"jsonrpc": "2.0", "method": "textDocument/didOpen", "params": map[string]any{
+			"textDocument": TextDocumentItem{URI: uri, Text: "[Match]\nName=eth0\n\n"},
+		}})
+		if err != nil {
+			t.Fatal(err)
+		}
+		var msg struct {
+			Params struct {
+				Diagnostics []Diagnostic `json:"diagnostics"`
+			} `json:"params"`
+		}
+		if err := json.Unmarshal(server.Handle(payload)[0], &msg); err != nil {
+			t.Fatal(err)
+		}
+		if len(msg.Params.Diagnostics) != 0 {
+			t.Errorf("%s: diagnostics = %#v, want none", uri, msg.Params.Diagnostics)
+		}
+		var items []CompletionItem
+		request(t, server, "textDocument/completion", TextDocumentPositionParams{
+			TextDocument: TextDocumentIdentifier{URI: uri}, Position: Position{Line: 2, Character: 0},
+		}, &items)
+		if len(items) != 0 {
+			t.Errorf("%s: completion returned %d items, want none", uri, len(items))
+		}
+	}
+}

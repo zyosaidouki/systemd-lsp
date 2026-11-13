@@ -121,6 +121,26 @@ var featureSpecs = map[string]featureSpec{
 		ja:         "NUMAメモリ配置方針です。対象ノードは NUMAMask= で指定します。preferred-many は Linux 5.15 以降、weighted-interleave は Linux 6.9 以降とカーネル側の重み設定が必要です。この2値は systemd v262 向けの先行対応です。",
 		example:    "NUMAPolicy=bind\nNUMAMask=0", man: "systemd.exec(5)",
 	},
+	// Booleans that later gained further values. Treating them as plain
+	// booleans would reject the newer spellings.
+	"PrivateTmp": {
+		sections: execSections, kind: "enum", values: withBooleans("disconnected"),
+		valueSince: map[string]int{"disconnected": 257},
+	},
+	"ProtectHome": {
+		sections: execSections, kind: "enum", values: withBooleans("read-only", "tmpfs"),
+	},
+	"ProtectSystem": {
+		sections: execSections, kind: "enum", values: withBooleans("full", "strict"),
+	},
+	"ProtectControlGroups": {
+		sections: execSections, kind: "enum", values: withBooleans("private", "strict"),
+		valueSince: map[string]int{"private": 257, "strict": 257},
+	},
+	"ProtectHostname": {
+		sections: execSections, kind: "enum", values: withBooleans("private"),
+		valueSince: map[string]int{"private": 258},
+	},
 	"SecureBits": {
 		sections: execSections, kind: "enum-list", multiple: true,
 		values:     []string{"keep-caps", "keep-caps-locked", "no-setuid-fixup", "no-setuid-fixup-locked", "noroot", "noroot-locked", "no-cap-ambient-raise", "no-cap-ambient-raise-locked", "exec-restrict-file", "exec-restrict-file-locked", "exec-deny-interactive", "exec-deny-interactive-locked"},
@@ -149,6 +169,11 @@ func EnrichCatalogFeatures(file CatalogFile) CatalogFile {
 	version := majorVersion(file.Version)
 	out := make([]CatalogDirective, 0, len(file.Directives))
 	for _, d := range file.Directives {
+		// Catalogs generated before these rules existed are corrected on load.
+		d.Multiple = d.Multiple || inferMultiple(d.Parser, d.Name)
+		if d.Parser == "config_parse_tristate" {
+			d.Values = boolValues
+		}
 		name := d.Name
 		if name == "AssertFraction" || name == "AssertMachineTag" {
 			name = "Condition" + strings.TrimPrefix(name, "Assert")
