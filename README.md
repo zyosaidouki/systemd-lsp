@@ -262,6 +262,12 @@ let g:systemd_lsp_catalog_path = '/path/to/catalog.json'
   - unknown sections
   - unknown directives in known sections
   - duplicate singleton directives
+  - values systemd rejects: unknown or wrongly capitalized enum values, and
+    malformed time spans, sizes, access modes, integers, and resource limits
+  - trailing comments, which systemd reads as part of the value
+  - obsolete settings that systemd ignores, such as `MemoryLimit=`
+  - units systemd refuses to load, such as a service without `ExecStart=`, or
+    a socket, timer, path, or mount unit without its required setting
 - Completion for common sections and directives, including syntax and examples
 - Embedded generated directive catalog from systemd's parser source
 - Optional external catalog with man XML documentation for a specific systemd version
@@ -314,7 +320,12 @@ Drop-in files are also supported when the parent directory identifies one of
 these unit types. For example, `example.service.d/override.conf` and
 `backup.timer.d/schedule.conf` activate the LSP. A general `.conf` file outside
 a supported unit drop-in directory does not activate it. Drop-ins receive
-completion and diagnostics but are never populated with a template.
+completion and diagnostics but are never populated with a template. Checks
+that need the whole unit, such as a missing `ExecStart=`, are skipped for them.
+
+The temporary files that `systemctl edit` opens in the editor, such as
+`.#example.serviceXXXXXX` and `example.service.d/.#override.confXXXXXX`, are
+treated as the unit file or drop-in they will be saved as.
 
 Other systemd-related formats such as `.network`, `.netdev`, `.link`, and
 `.nspawn` are not unit files and are not handled by this language server.

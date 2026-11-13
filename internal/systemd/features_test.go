@@ -55,7 +55,7 @@ func TestVersionedCatalogReplacesNewerSnapshot(t *testing.T) {
 			t.Fatalf("v258 leaked %s=%s", name, value)
 		}
 	}
-	diagnostics := Diagnostics(c, "[Service]\nRestartRandomizedDelaySec=5s\n", "service")
+	diagnostics := fragmentDiagnostics(c, "[Service]\nRestartRandomizedDelaySec=5s\n", "service")
 	if len(diagnostics) != 1 || !strings.Contains(diagnostics[0].Message, "catalog v258.11") {
 		t.Fatalf("missing version context: %#v", diagnostics)
 	}
@@ -154,7 +154,7 @@ func TestNewFeatureDiagnostics(t *testing.T) {
 		{"concurrency wrong section", "[Service]\nActivatingConcurrencyMax=4", "service", "unknown directive"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			ds := Diagnostics(c, tc.text, tc.unit)
+			ds := fragmentDiagnostics(c, tc.text, tc.unit)
 			if tc.message == "" {
 				if len(ds) != 0 {
 					t.Fatalf("unexpected diagnostics: %#v", ds)

@@ -6503,11 +6503,19 @@
       "section": "Socket",
       "name": "BindIPv6Only",
       "parser": "config_parse_socket_bind",
-      "valueKind": "socket",
+      "valueKind": "enum",
       "values": [
         "default",
         "both",
-        "ipv6-only"
+        "ipv6-only",
+        "true",
+        "false",
+        "yes",
+        "no",
+        "on",
+        "off",
+        "1",
+        "0"
       ]
     },
     {
@@ -9166,19 +9174,22 @@
       "section": "Socket",
       "name": "XAttrAccept",
       "parser": "config_parse_xattr",
-      "valueKind": "string"
+      "valueKind": "string",
+      "multiple": true
     },
     {
       "section": "Socket",
       "name": "XAttrEntryPoint",
       "parser": "config_parse_xattr",
-      "valueKind": "string"
+      "valueKind": "string",
+      "multiple": true
     },
     {
       "section": "Socket",
       "name": "XAttrListen",
       "parser": "config_parse_xattr",
-      "valueKind": "string"
+      "valueKind": "string",
+      "multiple": true
     },
     {
       "section": "Swap",

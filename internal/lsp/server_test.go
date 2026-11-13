@@ -616,3 +616,58 @@ func TestOtherSystemdFormatsAreLeftAlone(t *testing.T) {
 		}
 	}
 }
+
+func TestSystemctlEditTemporaryFilesAreRecognized(t *testing.T) {
+	for _, tc := range []struct {
+		uri      string
+		unitType string
+		dropIn   bool
+	}{
+		{"file:///etc/systemd/system/demo.service", "service", false},
+		{"file:///etc/systemd/system/my%20unit.service", "service", false},
+		// systemctl edit --full: .#<name> and six or sixteen random characters.
+		{"file:///etc/systemd/system/.%23demo.serviceAbC123", "service", false},
+		{"file:///etc/systemd/system/.#demo.timer0123456789abcdef", "timer", false},
+		// systemctl edit: the same, inside the drop-in directory.
+		{"file:///etc/systemd/system/demo.service.d/.%23override.confAbC123", "service", true},
+		{"file:///etc/systemd/system/demo.socket.d/.%23override.conf0123456789abcdef", "socket", true},
+		{"file:///etc/systemd/system/demo.service.d/override.conf", "service", true},
+		// Not a suffix systemd generates.
+		{"file:///etc/systemd/system/.%23demo.serviceAbC12", "serviceAbC12", false},
+	} {
+		if got := unitTypeFromURI(tc.uri); got != tc.unitType {
+			t.Errorf("unitTypeFromURI(%q) = %q, want %q", tc.uri, got, tc.unitType)
+		}
+		if got := isDropInURI(tc.uri); got != tc.dropIn {
+			t.Errorf("isDropInURI(%q) = %v, want %v", tc.uri, got, tc.dropIn)
+		}
+	}
+
+	server := NewServer(systemd.NewCatalog(), nil)
+	uri := "file:///etc/systemd/system/demo.service.d/.%23override.confAbC123"
+	openDocument(t, server, uri, "### Editing /etc/systemd/system/demo.service.d/override.conf\n[Service]\n\n")
+	var items []CompletionItem
+	request(t, server, "textDocument/completion", TextDocumentPositionParams{
+		TextDocument: TextDocumentIdentifier{URI: uri}, Position: Position{Line: 2},
+	}, &items)
+	if len(items) == 0 {
+		t.Fatal("no completions in a systemctl edit temporary file")
+	}
+}
+
+func TestCompletionOmitsObsoleteDirectives(t *testing.T) {
+	server := NewServer(systemd.NewCatalog(), nil)
+	uri := "file:///tmp/demo.service"
+	openDocument(t, server, uri, "[Service]\n\n")
+	var items []CompletionItem
+	request(t, server, "textDocument/completion", TextDocumentPositionParams{
+		TextDocument: TextDocumentIdentifier{URI: uri}, Position: Position{Line: 1},
+	}, &items)
+	found := map[string]bool{}
+	for _, item := range items {
+		found[item.Label] = true
+	}
+	if !found["MemoryMax"] || found["MemoryLimit"] || found["CPUShares"] {
+		t.Fatalf("MemoryMax=%v MemoryLimit=%v CPUShares=%v", found["MemoryMax"], found["MemoryLimit"], found["CPUShares"])
+	}
+}

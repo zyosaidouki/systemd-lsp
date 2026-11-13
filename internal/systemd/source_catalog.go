@@ -272,6 +272,7 @@ var additiveParsers = map[string]bool{
 	"config_parse_syscall_log":                 true,
 	"config_parse_timer":                       true,
 	"config_parse_unit_cpu_set":                true,
+	"config_parse_xattr":                       true,
 	"config_parse_unit_mounts_for":             true,
 }
 
@@ -349,7 +350,8 @@ func inferValues(section, parser, name string) []string {
 	case "ManagedOOMPreference":
 		return []string{"none", "avoid", "omit"}
 	case "BindIPv6Only":
-		return []string{"default", "both", "ipv6-only"}
+		// socket_address_bind_ipv6_only_or_bool_from_string() takes booleans too.
+		return append([]string{"default", "both", "ipv6-only"}, boolValues...)
 	case "StandardInput":
 		return []string{"null", "tty", "tty-force", "tty-fail", "data", "file", "socket", "fd"}
 	case "StandardOutput", "StandardError":

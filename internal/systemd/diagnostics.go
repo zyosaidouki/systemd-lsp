@@ -86,6 +86,10 @@ func diagnose(catalog *Catalog, text, unitType string, dropIn bool) []Diagnostic
 				diagnostics = append(diagnostics, diagnostic(entry, SeverityWarning, message))
 				continue
 			}
+			if directive.Obsolete() {
+				diagnostics = append(diagnostics, diagnostic(entry, SeverityWarning, obsoleteMessage(directive.Name)))
+				continue
+			}
 			if !directive.Multiple {
 				key := section + "." + directive.Name
 				if firstLine, ok := seenSingletons[key]; ok {
@@ -102,6 +106,9 @@ func diagnose(catalog *Catalog, text, unitType string, dropIn bool) []Diagnostic
 			}
 			lastValues[section][entry.Key] = entry
 		}
+	}
+	if !dropIn {
+		diagnostics = append(diagnostics, loadErrors(doc, unitType)...)
 	}
 	// Only the last assignment of each setting takes effect.
 	if service := lastValues["Service"]; unitType == "service" && strings.EqualFold(service["Type"].Value, "forking") && service["PIDFile"].Value == "" {
@@ -122,6 +129,22 @@ func diagnose(catalog *Catalog, text, unitType string, dropIn bool) []Diagnostic
 	return diagnostics
 }
 
+// Settings systemd removed, and the setting that took over where there is one.
+var obsoleteReplacements = map[string]string{
+	"MemoryLimit": "MemoryMax", "CPUShares": "CPUWeight", "StartupCPUShares": "StartupCPUWeight",
+	"BlockIOWeight": "IOWeight", "StartupBlockIOWeight": "StartupIOWeight", "BlockIODeviceWeight": "IODeviceWeight",
+	"BlockIOReadBandwidth": "IOReadBandwidthMax", "BlockIOWriteBandwidth": "IOWriteBandwidthMax",
+	"BlockIOAccounting": "IOAccounting",
+}
+
+func obsoleteMessage(name string) string {
+	message := name + "= is no longer supported and systemd ignores it"
+	if replacement := obsoleteReplacements[name]; replacement != "" {
+		message += "; use " + replacement + "= instead"
+	}
+	return message
+}
+
 func isExtensionName(name string) bool {
 	return strings.HasPrefix(name, "X-")
 }
@@ -139,23 +162,6 @@ func diagnostic(entry Entry, severity int, message string) Diagnostic {
 		Severity: severity,
 		Source:   "systemd-lsp",
 		Message:  message,
-	}
-}
-
-func shouldValidateValue(directive Directive, value string) bool {
-	if value == "" || strings.ContainsAny(value, " \t:/") {
-		return false
-	}
-	for _, boolValue := range boolValues {
-		if strings.EqualFold(value, boolValue) {
-			return true
-		}
-	}
-	switch directive.Name {
-	case "Type", "ExitType", "Restart", "NotifyAccess", "OOMPolicy", "CollectMode", "OnFailureJobMode", "OnSuccessJobMode":
-		return true
-	default:
-		return isBoolDirective(directive)
 	}
 }
 

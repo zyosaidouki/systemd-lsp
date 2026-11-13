@@ -76,6 +76,24 @@ func (c *Catalog) SupportsUnitType(unitType string) bool {
 	return false
 }
 
+// UnitTypes lists the unit file extensions the builtin sections apply to.
+func UnitTypes() []string {
+	var types []string
+	for _, section := range builtinSections {
+		for _, unitType := range section.UnitTypes {
+			if !contains(types, unitType) {
+				types = append(types, unitType)
+			}
+		}
+	}
+	return types
+}
+
+// Obsolete reports whether systemd still parses the setting but ignores it.
+func (d Directive) Obsolete() bool {
+	return d.Parser == "config_parse_warn_compat"
+}
+
 func (c *Catalog) SectionDoc(section string) string {
 	if s, ok := c.sections[section]; ok {
 		return s.Doc

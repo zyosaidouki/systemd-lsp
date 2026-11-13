@@ -5,6 +5,7 @@ import (
 	"encoding/json/v2"
 	"fmt"
 	"log"
+	"net/url"
 	"path"
 	"strings"
 
@@ -240,7 +241,7 @@ WantedBy=multi-user.target
 `
 
 func shouldInsertServiceTemplate(uri, text string) bool {
-	return path.Ext(path.Base(uri)) == ".service" && strings.TrimSpace(text) == ""
+	return path.Ext(documentPath(uri)) == ".service" && strings.TrimSpace(text) == ""
 }
 
 func (s *Server) applyEditRequest(uri, newText string) []byte {
@@ -386,6 +387,9 @@ func (s *Server) completion(p TextDocumentPositionParams) any {
 	directives := s.catalog.DirectivesFor(section)
 	items := make([]CompletionItem, 0, len(directives))
 	for _, directive := range directives {
+		if directive.Obsolete() {
+			continue
+		}
 		insertText, insertTextFormat := s.completionInsertText(directive.Name + "=")
 		if s.snippetSupport && directive.Snippet != "" {
 			insertText = directive.Snippet
@@ -534,14 +538,50 @@ func notification(method string, params any) []byte {
 	return payload
 }
 
+// documentPath returns the path a document is saved under. URIs are
+// percent-encoded, and systemctl edit opens a temporary file that is named
+// .#<name><random suffix> and sits next to the real one.
+func documentPath(uri string) string {
+	name, err := url.PathUnescape(uri)
+	if err != nil {
+		name = uri
+	}
+	dir, base := path.Split(name)
+	if rest, ok := strings.CutPrefix(base, ".#"); ok {
+		base = trimTemporarySuffix(rest)
+	}
+	return dir + base
+}
+
+// trimTemporarySuffix removes the random characters systemd appends to the
+// extension: six from mkostemp(), or sixteen hexadecimal digits.
+func trimTemporarySuffix(name string) string {
+	dot := strings.LastIndex(name, ".")
+	extension := name[dot+1:]
+	for _, known := range append(systemd.UnitTypes(), "conf") {
+		suffix, ok := strings.CutPrefix(extension, known)
+		if !ok || len(suffix) != 6 && len(suffix) != 16 {
+			continue
+		}
+		if strings.IndexFunc(suffix, func(r rune) bool {
+			return !(r >= '0' && r <= '9' || r >= 'a' && r <= 'z' || r >= 'A' && r <= 'Z')
+		}) < 0 {
+			return name[:dot+1] + known
+		}
+	}
+	return name
+}
+
 func isDropInURI(uri string) bool {
-	return strings.HasSuffix(path.Base(uri), ".conf") && strings.HasSuffix(path.Base(path.Dir(uri)), ".d")
+	name := documentPath(uri)
+	return strings.HasSuffix(path.Base(name), ".conf") && strings.HasSuffix(path.Base(path.Dir(name)), ".d")
 }
 
 func unitTypeFromURI(uri string) string {
-	base := path.Base(uri)
+	name := documentPath(uri)
+	base := path.Base(name)
 	if isDropInURI(uri) {
-		base = strings.TrimSuffix(path.Base(path.Dir(uri)), ".d")
+		base = strings.TrimSuffix(path.Base(path.Dir(name)), ".d")
 	}
 	ext := path.Ext(base)
 	if ext == "" {

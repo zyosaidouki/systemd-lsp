@@ -141,6 +141,7 @@ var featureSpecs = map[string]featureSpec{
 		sections: execSections, kind: "enum", values: withBooleans("private"),
 		valueSince: map[string]int{"private": 258},
 	},
+	"BindIPv6Only": {sections: []string{"Socket"}, kind: "enum"},
 	"SecureBits": {
 		sections: execSections, kind: "enum-list", multiple: true,
 		values:     []string{"keep-caps", "keep-caps-locked", "no-setuid-fixup", "no-setuid-fixup-locked", "noroot", "noroot-locked", "no-cap-ambient-raise", "no-cap-ambient-raise-locked", "exec-restrict-file", "exec-restrict-file-locked", "exec-deny-interactive", "exec-deny-interactive-locked"},
@@ -173,6 +174,9 @@ func EnrichCatalogFeatures(file CatalogFile) CatalogFile {
 		d.Multiple = d.Multiple || inferMultiple(d.Parser, d.Name)
 		if d.Parser == "config_parse_tristate" {
 			d.Values = boolValues
+		}
+		if d.Parser == "config_parse_socket_bind" {
+			d.Values = inferValues(d.Section, d.Parser, d.Name)
 		}
 		name := d.Name
 		if name == "AssertFraction" || name == "AssertMachineTag" {

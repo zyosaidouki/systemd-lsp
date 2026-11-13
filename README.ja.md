@@ -262,6 +262,12 @@ let g:systemd_lsp_catalog_path = '/path/to/catalog.json'
   - 未知のセクション
   - 既知のセクション内にある未知のディレクティブ
   - 複数回指定できないディレクティブの重複
+  - systemd が受け付けない値（未知の列挙値や大文字・小文字の誤り、
+    時間・サイズ・アクセスモード・整数・リソース上限の書式誤り）
+  - 行末コメント（systemd は値の一部として読みます）
+  - `MemoryLimit=` など、systemd が無視する廃止済みの設定
+  - systemd が読み込みを拒否するユニット（`ExecStart=` のないサービスや、
+    必須の設定がないソケット・タイマー・パス・マウントユニット）
 - 主なセクション・ディレクティブの補完（構文と使用例を含む）
 - systemd のパーサーソースから生成したディレクティブカタログの組み込み
 - 特定の systemd バージョンの man XML ドキュメントを含む外部カタログへの対応
@@ -311,6 +317,11 @@ let g:systemd_lsp_catalog_path = '/path/to/catalog.json'
 例えば `example.service.d/override.conf` や `backup.timer.d/schedule.conf` で LSP が有効になります。
 対応するドロップインディレクトリの外にある一般的な `.conf` ファイルでは有効になりません。
 ドロップインでも補完と診断を利用できますが、テンプレートは挿入しません。
+`ExecStart=` の欠落など、ユニット全体が必要な検査はドロップインでは行いません。
+
+`systemctl edit` がエディタで開く一時ファイル（`.#example.serviceXXXXXX` や
+`example.service.d/.#override.confXXXXXX`）は、保存先のユニットファイルまたは
+ドロップインとして扱います。
 
 `.network`、`.netdev`、`.link`、`.nspawn` など、ユニットファイルではない systemd 関連形式は対象外です。
 `.device` ユニットも、現在のカタログとエディタのファイルタイプ検出ルールには含まれていません。
