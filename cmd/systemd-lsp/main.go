@@ -53,7 +53,11 @@ func main() {
 		}
 	}
 	server := lsp.NewServer(catalog, logger)
-	if err := serve(os.Stdin, os.Stdout, server); err != nil && !errors.Is(err, io.EOF) {
+	err := serve(os.Stdin, os.Stdout, server)
+	if code, exited := server.ExitCode(); exited {
+		os.Exit(code)
+	}
+	if err != nil && !errors.Is(err, io.EOF) {
 		logger.Printf("server stopped: %v", err)
 		os.Exit(1)
 	}
@@ -61,7 +65,11 @@ func main() {
 
 type handler interface {
 	Handle(jsontext.Value) [][]byte
+	ExitCode() (code int, exited bool)
 }
+
+// serve returns nil once the client has sent exit, and the read or write
+// error that ended the session otherwise.
 
 func serve(in io.Reader, out io.Writer, h handler) error {
 	reader := bufio.NewReader(in)
@@ -74,6 +82,9 @@ func serve(in io.Reader, out io.Writer, h handler) error {
 			if err := writeMessage(out, response); err != nil {
 				return err
 			}
+		}
+		if _, exited := h.ExitCode(); exited {
+			return nil
 		}
 	}
 }

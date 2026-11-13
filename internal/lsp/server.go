@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/zyosaidouki/systemd-lsp/internal/systemd"
+	"github.com/zyosaidouki/systemd-lsp/internal/version"
 )
 
 type Server struct {
@@ -16,6 +17,7 @@ type Server struct {
 	logger         *log.Logger
 	docs           map[string]string
 	shutdown       bool
+	exited         bool
 	nextRequestID  int
 	locale         string
 	snippetSupport bool
@@ -84,6 +86,7 @@ func (s *Server) dispatch(method string, params jsontext.Value) (any, [][]byte, 
 		s.shutdown = true
 		return nil, nil, nil
 	case "exit":
+		s.exited = true
 		return nil, nil, nil
 	case "textDocument/didOpen":
 		var p struct {
@@ -161,6 +164,15 @@ func (s *Server) dispatch(method string, params jsontext.Value) (any, [][]byte, 
 		}
 		return nil, nil, nil
 	}
+}
+
+// ExitCode reports whether the client sent exit, and the status the process
+// must then end with: 0 after a shutdown request, 1 otherwise.
+func (s *Server) ExitCode() (code int, exited bool) {
+	if !s.shutdown {
+		code = 1
+	}
+	return code, s.exited
 }
 
 func (s *Server) configure(params jsontext.Value) {
@@ -267,7 +279,7 @@ func (s *Server) initialize() map[string]any {
 	return map[string]any{
 		"serverInfo": map[string]any{
 			"name":    "systemd-lsp",
-			"version": "0.1.0",
+			"version": version.Value,
 		},
 		"capabilities": map[string]any{
 			"textDocumentSync": map[string]any{
@@ -292,7 +304,11 @@ func (s *Server) publishDiagnostics(uri string) [][]byte {
 		return nil
 	}
 	unitType := unitTypeFromURI(uri)
-	diagnostics := systemd.Diagnostics(s.catalog, text, unitType)
+	diagnose := systemd.Diagnostics
+	if isDropInURI(uri) {
+		diagnose = systemd.DropInDiagnostics
+	}
+	diagnostics := diagnose(s.catalog, text, unitType)
 	return [][]byte{notification("textDocument/publishDiagnostics", map[string]any{
 		"uri":         uri,
 		"diagnostics": diagnostics,
@@ -305,6 +321,10 @@ func (s *Server) completion(p TextDocumentPositionParams) any {
 	line := lineAt(doc, p.Position.Line)
 	before := prefixAt(line, p.Position.Character)
 	trimmed := strings.TrimLeft(before, " \t")
+	if isContinuationLine(doc, p.Position.Line) {
+		// The line is part of the value of the directive above it.
+		return []CompletionItem{}
+	}
 
 	if strings.HasPrefix(trimmed, "[") {
 		items := make([]CompletionItem, 0, len(s.catalog.SectionsFor(unitType)))
@@ -364,16 +384,20 @@ func (s *Server) completionInsertText(text string) (string, int) {
 func (s *Server) hover(p TextDocumentPositionParams) any {
 	doc := s.docs[p.TextDocument.URI]
 	line := lineAt(doc, p.Position.Line)
-	wordRange, word := wordAt(line, p.Position.Character)
-	if word == "" {
+	wordRange, word := wordAt(line, len(prefixAt(line, p.Position.Character)))
+	if word == "" || isContinuationLine(doc, p.Position.Line) {
 		return nil
+	}
+	hoverRange := &Range{
+		Start: Position{Line: p.Position.Line, Character: systemd.UTF16Length(line[:wordRange.Start])},
+		End:   Position{Line: p.Position.Line, Character: systemd.UTF16Length(line[:wordRange.End])},
 	}
 	if strings.HasPrefix(strings.TrimSpace(line), "[") && strings.HasSuffix(strings.TrimSpace(line), "]") {
 		section := strings.Trim(strings.TrimSpace(line), "[]")
 		if doc := s.catalog.SectionDocumentationFor(section, s.locale); doc != "" {
 			return Hover{
 				Contents: MarkupContent{Kind: "markdown", Value: fmt.Sprintf("**[%s]**\n\n%s", section, doc)},
-				Range:    &Range{Start: Position{Line: p.Position.Line, Character: wordRange.Start}, End: Position{Line: p.Position.Line, Character: wordRange.End}},
+				Range:    hoverRange,
 			}
 		}
 	}
@@ -381,7 +405,7 @@ func (s *Server) hover(p TextDocumentPositionParams) any {
 	if directive, ok := s.catalog.Directive(section, word); ok {
 		return Hover{
 			Contents: MarkupContent{Kind: "markdown", Value: fmt.Sprintf("**%s=**\n\n%s", directive.Name, systemd.DirectiveDocumentationFor(section, directive, s.locale))},
-			Range:    &Range{Start: Position{Line: p.Position.Line, Character: wordRange.Start}, End: Position{Line: p.Position.Line, Character: wordRange.End}},
+			Range:    hoverRange,
 		}
 	}
 	return nil
@@ -421,11 +445,11 @@ func (s *Server) documentSymbols(uri string) []DocumentSymbol {
 				Kind: SymbolKindNamespace,
 				Range: Range{
 					Start: Position{Line: entry.Line, Character: 0},
-					End:   Position{Line: entry.Line, Character: len(entry.Raw)},
+					End:   Position{Line: entry.Line, Character: systemd.UTF16Length(entry.Raw)},
 				},
 				SelectionRange: Range{
-					Start: Position{Line: entry.Line, Character: entry.KeyStart},
-					End:   Position{Line: entry.Line, Character: entry.KeyEnd},
+					Start: Position{Line: entry.Line, Character: systemd.UTF16Length(entry.Raw[:entry.KeyStart])},
+					End:   Position{Line: entry.Line, Character: systemd.UTF16Length(entry.Raw[:entry.KeyEnd])},
 				},
 			})
 			current = &symbols[len(symbols)-1]
@@ -439,11 +463,11 @@ func (s *Server) documentSymbols(uri string) []DocumentSymbol {
 				Kind:   SymbolKindProperty,
 				Range: Range{
 					Start: Position{Line: entry.Line, Character: 0},
-					End:   Position{Line: entry.Line, Character: len(entry.Raw)},
+					End:   Position{Line: entry.Line, Character: systemd.UTF16Length(entry.Raw)},
 				},
 				SelectionRange: Range{
-					Start: Position{Line: entry.Line, Character: entry.KeyStart},
-					End:   Position{Line: entry.Line, Character: entry.KeyEnd},
+					Start: Position{Line: entry.Line, Character: systemd.UTF16Length(entry.Raw[:entry.KeyStart])},
+					End:   Position{Line: entry.Line, Character: systemd.UTF16Length(entry.Raw[:entry.KeyEnd])},
 				},
 			})
 		}
@@ -482,13 +506,14 @@ func notification(method string, params any) []byte {
 	return payload
 }
 
+func isDropInURI(uri string) bool {
+	return strings.HasSuffix(path.Base(uri), ".conf") && strings.HasSuffix(path.Base(path.Dir(uri)), ".d")
+}
+
 func unitTypeFromURI(uri string) string {
 	base := path.Base(uri)
-	if strings.HasSuffix(base, ".conf") {
-		dir := path.Base(path.Dir(uri))
-		if strings.HasSuffix(dir, ".d") {
-			base = strings.TrimSuffix(dir, ".d")
-		}
+	if isDropInURI(uri) {
+		base = strings.TrimSuffix(path.Base(path.Dir(uri)), ".d")
 	}
 	ext := path.Ext(base)
 	if ext == "" {
@@ -518,6 +543,11 @@ func prefixAt(line string, character int) string {
 		units += width
 	}
 	return line
+}
+
+func isContinuationLine(text string, lineNo int) bool {
+	entries := systemd.Parse(text).Entries
+	return lineNo >= 0 && lineNo < len(entries) && entries[lineNo].Kind == systemd.EntryContinuation
 }
 
 func sectionAt(catalog *systemd.Catalog, text string, lineNo int) string {

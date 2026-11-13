@@ -18,7 +18,7 @@ func completionRequest(t *testing.T, server *Server, section, markedLine string)
 	uri := "file:///tmp/completion.service"
 	open, _ := json.Marshal(map[string]any{"jsonrpc": "2.0", "method": "textDocument/didOpen", "params": map[string]any{"textDocument": TextDocumentItem{URI: uri, Text: "[" + section + "]\n" + line, Version: 1}}})
 	server.Handle(open)
-	req, _ := json.Marshal(map[string]any{"jsonrpc": "2.0", "id": 20, "method": "textDocument/completion", "params": TextDocumentPositionParams{TextDocument: TextDocumentIdentifier{URI: uri}, Position: Position{Line: 1, Character: utf16Length(markedLine[:caret])}}})
+	req, _ := json.Marshal(map[string]any{"jsonrpc": "2.0", "id": 20, "method": "textDocument/completion", "params": TextDocumentPositionParams{TextDocument: TextDocumentIdentifier{URI: uri}, Position: Position{Line: 1, Character: systemd.UTF16Length(markedLine[:caret])}}})
 	responses := server.Handle(req)
 	if len(responses) != 1 {
 		t.Fatalf("responses = %d", len(responses))
@@ -133,7 +133,7 @@ func TestValueCompletionUTF16Range(t *testing.T) {
 	if !ok {
 		t.Fatal("missing completion after non-ASCII token")
 	}
-	if got, want := item.TextEdit.Range.Start.Character, utf16Length("SecureBits=\"日本😀\" "); got != want {
+	if got, want := item.TextEdit.Range.Start.Character, systemd.UTF16Length("SecureBits=\"日本😀\" "); got != want {
 		t.Fatalf("start = %d, want %d", got, want)
 	}
 }

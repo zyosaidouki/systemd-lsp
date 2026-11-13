@@ -2,7 +2,6 @@ package lsp
 
 import (
 	"strings"
-	"unicode/utf16"
 
 	"github.com/zyosaidouki/systemd-lsp/internal/systemd"
 )
@@ -58,14 +57,10 @@ func (s *Server) valueCompletions(section, key, value, line string, position Pos
 			Detail: s.localizedValueDetail(key), InsertText: candidate,
 			Documentation: systemd.DirectiveDocumentationFor(section, directive, s.locale),
 			TextEdit: &TextEdit{
-				Range:   Range{Start: Position{Line: position.Line, Character: utf16Length(line[:start])}, End: Position{Line: position.Line, Character: utf16Length(line[:end])}},
+				Range:   Range{Start: Position{Line: position.Line, Character: systemd.UTF16Length(line[:start])}, End: Position{Line: position.Line, Character: systemd.UTF16Length(line[:end])}},
 				NewText: candidate,
 			},
 		})
 	}
 	return items
-}
-
-func utf16Length(text string) int {
-	return len(utf16.Encode([]rune(text)))
 }

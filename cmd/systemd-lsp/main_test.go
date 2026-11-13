@@ -58,10 +58,32 @@ func TestServeWritesMultipleHandlerResponses(t *testing.T) {
 	}
 }
 
+func TestServeStopsAfterExit(t *testing.T) {
+	request := "Content-Length: 33\r\n\r\n" + `{"jsonrpc":"2.0","method":"exit"}`
+	// The second message must stay unhandled: the client keeps stdin open.
+	input := bytes.NewBufferString(request + request)
+	handled := 0
+	if err := serve(input, &bytes.Buffer{}, staticHandler{exited: true, handled: &handled}); err != nil {
+		t.Fatalf("serve = %v, want nil after exit", err)
+	}
+	if handled != 1 {
+		t.Fatalf("handled %d messages, want 1", handled)
+	}
+}
+
 type staticHandler struct {
 	responses [][]byte
+	exited    bool
+	handled   *int
+}
+
+func (h staticHandler) ExitCode() (int, bool) {
+	return 0, h.exited
 }
 
 func (h staticHandler) Handle(jsontext.Value) [][]byte {
+	if h.handled != nil {
+		*h.handled++
+	}
 	return h.responses
 }

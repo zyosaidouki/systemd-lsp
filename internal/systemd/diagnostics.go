@@ -28,18 +28,28 @@ const (
 	SeverityHint    = 4
 )
 
+// Diagnostics checks a complete unit file.
 func Diagnostics(catalog *Catalog, text, unitType string) []Diagnostic {
+	return diagnose(catalog, text, unitType, false)
+}
+
+// DropInDiagnostics checks a drop-in, whose settings only supplement the main
+// unit file, so a missing companion setting is not necessarily a mistake.
+func DropInDiagnostics(catalog *Catalog, text, unitType string) []Diagnostic {
+	return diagnose(catalog, text, unitType, true)
+}
+
+func diagnose(catalog *Catalog, text, unitType string, dropIn bool) []Diagnostic {
 	doc := Parse(text)
 	diagnostics := make([]Diagnostic, 0)
 	section := ""
 	sectionKnown := false
 	seenSingletons := map[string]int{}
-	serviceChecks := newServiceChecks()
 	lastValues := map[string]map[string]Entry{}
 
 	for _, entry := range doc.Entries {
 		switch entry.Kind {
-		case EntryBlank, EntryComment:
+		case EntryBlank, EntryComment, EntryContinuation:
 			continue
 		case EntryInvalid:
 			diagnostics = append(diagnostics, diagnostic(entry, SeverityError, entry.Message))
@@ -91,12 +101,17 @@ func Diagnostics(catalog *Catalog, text, unitType string) []Diagnostic {
 				lastValues[section] = map[string]Entry{}
 			}
 			lastValues[section][entry.Key] = entry
-			if unitType == "service" && section == "Service" {
-				serviceChecks.record(entry)
-			}
 		}
 	}
-	diagnostics = append(diagnostics, serviceChecks.diagnostics()...)
+	// Only the last assignment of each setting takes effect.
+	if service := lastValues["Service"]; unitType == "service" && strings.EqualFold(service["Type"].Value, "forking") && service["PIDFile"].Value == "" {
+		message := "Type=forking should specify PIDFile= so systemd can reliably track the main process"
+		if dropIn {
+			diagnostics = append(diagnostics, diagnostic(service["Type"], SeverityHint, message+"; it is not set in this drop-in (it may be supplied by the main unit file or another drop-in)"))
+		} else {
+			diagnostics = append(diagnostics, diagnostic(service["Type"], SeverityWarning, message))
+		}
+	}
 	for _, name := range catalog.SectionsFor(unitType) {
 		values := lastValues[name]
 		partition, ok := values["CPUSetPartition"]
@@ -111,37 +126,6 @@ func isExtensionName(name string) bool {
 	return strings.HasPrefix(name, "X-")
 }
 
-type serviceChecks struct {
-	forkingType *Entry
-	hasPIDFile  bool
-}
-
-func newServiceChecks() *serviceChecks {
-	return &serviceChecks{}
-}
-
-func (c *serviceChecks) record(entry Entry) {
-	switch entry.Key {
-	case "Type":
-		if strings.EqualFold(entry.Value, "forking") {
-			c.forkingType = &entry
-		}
-	case "PIDFile":
-		if strings.TrimSpace(entry.Value) != "" {
-			c.hasPIDFile = true
-		}
-	}
-}
-
-func (c *serviceChecks) diagnostics() []Diagnostic {
-	if c.forkingType == nil || c.hasPIDFile {
-		return nil
-	}
-	return []Diagnostic{
-		diagnostic(*c.forkingType, SeverityWarning, "Type=forking should specify PIDFile= so systemd can reliably track the main process"),
-	}
-}
-
 func diagnostic(entry Entry, severity int, message string) Diagnostic {
 	start, end := entry.KeyStart, entry.KeyEnd
 	if start == end {
@@ -149,8 +133,8 @@ func diagnostic(entry Entry, severity int, message string) Diagnostic {
 	}
 	return Diagnostic{
 		Range: Range{
-			Start: Position{Line: entry.Line, Character: start},
-			End:   Position{Line: entry.Line, Character: end},
+			Start: Position{Line: entry.Line, Character: UTF16Length(entry.Raw[:start])},
+			End:   Position{Line: entry.Line, Character: UTF16Length(entry.Raw[:end])},
 		},
 		Severity: severity,
 		Source:   "systemd-lsp",

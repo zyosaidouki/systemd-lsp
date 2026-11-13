@@ -212,3 +212,53 @@ func hasMessageContaining(messages []string, needle string) bool {
 	}
 	return false
 }
+
+func TestDiagnosticsAcceptsContinuationLines(t *testing.T) {
+	text := "[Service]\nExecStart=/usr/bin/foo \\\n    --option=bar \\\n    --verbose\nEnvironment=A=1 \\\n  B=2\n"
+	if diagnostics := Diagnostics(NewCatalog(), text, "service"); len(diagnostics) != 0 {
+		t.Fatalf("diagnostics = %#v, want none", diagnostics)
+	}
+	// The joined value is what gets validated.
+	diagnostics := Diagnostics(NewCatalog(), "[Service]\nRestart=\\\n  maybe\n", "service")
+	if len(diagnostics) != 1 || !strings.Contains(diagnostics[0].Message, `unexpected value "maybe"`) {
+		t.Fatalf("diagnostics = %#v, want one unexpected value", diagnostics)
+	}
+}
+
+func TestDiagnosticsUsesLastTypeForForkingCheck(t *testing.T) {
+	diagnostics := Diagnostics(NewCatalog(), "[Service]\nType=forking\nType=simple\nExecStart=/bin/true\n", "service")
+	for _, diagnostic := range diagnostics {
+		if strings.Contains(diagnostic.Message, "PIDFile=") {
+			t.Fatalf("overridden Type=forking still reported: %#v", diagnostic)
+		}
+	}
+	diagnostics = Diagnostics(NewCatalog(), "[Service]\nPIDFile=/run/demo.pid\nType=forking\nPIDFile=\n", "service")
+	if !hasMessageContaining(diagnosticMessages(diagnostics), "Type=forking should specify PIDFile=") {
+		t.Fatalf("diagnostics = %#v, want warning after PIDFile= was reset", diagnostics)
+	}
+}
+
+func TestDropInDiagnosticsOnlyHintsAtMissingPIDFile(t *testing.T) {
+	diagnostics := DropInDiagnostics(NewCatalog(), "[Service]\nType=forking\n", "service")
+	if len(diagnostics) != 1 || diagnostics[0].Severity != SeverityHint || !strings.Contains(diagnostics[0].Message, "main unit file") {
+		t.Fatalf("diagnostics = %#v, want one hint", diagnostics)
+	}
+}
+
+func TestDiagnosticRangesCountUTF16Units(t *testing.T) {
+	diagnostics := Diagnostics(NewCatalog(), "[Unit]\n日本語😀だけの行\n", "service")
+	if len(diagnostics) != 1 {
+		t.Fatalf("diagnostics = %#v, want one", diagnostics)
+	}
+	if got := diagnostics[0].Range.End.Character; got != 9 {
+		t.Fatalf("end character = %d, want 9 UTF-16 units", got)
+	}
+}
+
+func diagnosticMessages(diagnostics []Diagnostic) []string {
+	messages := make([]string, 0, len(diagnostics))
+	for _, diagnostic := range diagnostics {
+		messages = append(messages, diagnostic.Message)
+	}
+	return messages
+}
