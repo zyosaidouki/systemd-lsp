@@ -267,6 +267,9 @@ let g:systemd_lsp_catalog_path = '/path/to/catalog.json'
   - unit names systemd does not accept, such as `After=network` without a
     type suffix or names separated by commas
   - trailing comments, which systemd reads as part of the value
+  - shell syntax in `ExecStart=` and the other command settings, such as
+    `> file`, `|`, `&&`, and `$(...)`, which systemd passes to the command
+    unchanged because it does not use a shell
   - obsolete settings that systemd ignores, such as `MemoryLimit=`
   - units systemd refuses to load, such as a service without `ExecStart=`, or
     a socket, timer, path, or mount unit without its required setting

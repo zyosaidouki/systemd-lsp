@@ -267,6 +267,8 @@ let g:systemd_lsp_catalog_path = '/path/to/catalog.json'
   - systemd が受け付けないユニット名（`After=network` のように種別の
     接尾辞がないものや、カンマ区切りの名前）
   - 行末コメント（systemd は値の一部として読みます）
+  - `ExecStart=` などのコマンド設定に書かれたシェル構文（`> file`、`|`、`&&`、
+    `$(...)` など。systemd はシェルを使わないため、そのまま引数として渡します）
   - `MemoryLimit=` など、systemd が無視する廃止済みの設定
   - systemd が読み込みを拒否するユニット（`ExecStart=` のないサービスや、
     必須の設定がないソケット・タイマー・パス・マウントユニット）

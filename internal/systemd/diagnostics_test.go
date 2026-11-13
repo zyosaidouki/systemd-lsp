@@ -500,3 +500,48 @@ func TestDiagnosticsValidatesUnitNames(t *testing.T) {
 		}
 	}
 }
+
+func TestDiagnosticsReportsShellSyntaxInCommands(t *testing.T) {
+	reported := map[string]string{
+		"ExecStart=/bin/a > /tmp/log":               `">" is passed to the command as an argument`,
+		"ExecStart=/bin/a >/tmp/log 2>&1":           `">/tmp/log" is passed to the command as an argument`,
+		"ExecStart=/bin/a 2>/dev/null":              `"2>/dev/null" is passed to the command as an argument`,
+		"ExecStart=/bin/a &>/dev/null":              `"&>/dev/null" is passed to the command as an argument`,
+		"ExecStart=/bin/a < /etc/input":             `"<" is passed to the command as an argument`,
+		"ExecStart=echo hi | grep h":                `"|" is passed to the command as an argument`,
+		"ExecStartPre=/bin/mkdir /a && /bin/true":   `"&&" is passed to the command as an argument`,
+		"ExecStart=/bin/a &":                        `"&" is passed to the command as an argument`,
+		"ExecStop=/bin/kill $(cat /run/a.pid)":      `the command substitution in "$(cat" is not expanded`,
+		"ExecStop=/bin/kill `cat /run/a.pid`":       "the command substitution in \"`cat\" is not expanded",
+		"ExecStart=/bin/a ; /bin/b | /bin/c":        `"|" is passed to the command as an argument`,
+		"ExecStopPost=/bin/a \\\n  --flag > /tmp/x": `">" is passed to the command as an argument`,
+	}
+	for line, want := range reported {
+		diagnostics := DropInDiagnostics(NewCatalog(), "[Service]\n"+line+"\n", "service")
+		if len(diagnostics) != 1 || diagnostics[0].Severity != SeverityWarning || diagnostics[0].Range.Start.Line != 1 ||
+			!strings.Contains(diagnostics[0].Message, "through a shell") || !strings.Contains(diagnostics[0].Message, want) {
+			t.Errorf("%s: %q, want %q", line, messages(diagnostics), want)
+		}
+	}
+	accepted := []string{
+		"ExecStart=/bin/sh -c '/bin/a > /tmp/log 2>&1'",
+		`ExecStart=/bin/sh -c "a | b && c"`,
+		"ExecStart=/bin/bash -c 'kill $(cat /run/a.pid)'",
+		"ExecStart=/usr/bin/grep -E 'a|b' /x",
+		"ExecStart=/bin/a --regex=a|b --opt=>x a&b",
+		`ExecStart=/bin/a \> \| \&\& ">" "|"`,
+		// A | prefix runs the command line through the user's shell.
+		"ExecStart=|/bin/a | /bin/b > /tmp/x",
+		"ExecStart=/bin/a ; /bin/b",
+		"ExecReload=/bin/kill -HUP $MAINPID",
+		"ExecStart=/bin/a ${OPTS} $OPTIONS",
+		"ExecStart=/sbin/iptables -A INPUT ! -i lo -j DROP",
+		"ExecStart=/bin/echo <html> >= <=",
+		"Environment=A=b > c | d",
+	}
+	for _, line := range accepted {
+		if diagnostics := DropInDiagnostics(NewCatalog(), "[Service]\n"+line+"\n", "service"); len(diagnostics) != 0 {
+			t.Errorf("%s: %q, want no diagnostics", line, messages(diagnostics))
+		}
+	}
+}
