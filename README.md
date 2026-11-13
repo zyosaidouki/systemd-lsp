@@ -240,6 +240,8 @@ version during an update. A first installation shows `not-installed`.
 ## Language and external catalogs
 
 The setup examples select Japanese documentation. Change `ja` to `en` for English.
+With `ja`, a setting that has no Japanese description shows its English one,
+for example from an external catalog generated with man page documentation.
 To use an external catalog, configure it before the plugin loads:
 
 Neovim (`init.lua` or lazy.nvim `init`):

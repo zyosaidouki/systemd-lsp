@@ -32,6 +32,8 @@ func shellSyntaxMessage(d Directive, value string) string {
 			prefixes := word[:len(word)-len(strings.TrimLeft(word, "-@:+!|"))]
 			viaShell = strings.Contains(prefixes, "|")
 		case viaShell || strings.ContainsAny(word, `'"\`):
+		case word == "#":
+			return fmt.Sprintf("systemd does not support trailing comments; \"#\" and the words after it are passed to the %s= command as arguments", d.Name)
 		case word == "|" || word == "||" || word == "&&" || word == "&":
 			return fmt.Sprintf("systemd does not run %s= through a shell, so %q is passed to the command as an argument; run the command with /bin/sh -c '...', or quote the word if that is intended", d.Name, word)
 		case shellRedirection.MatchString(word):

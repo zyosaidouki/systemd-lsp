@@ -318,7 +318,7 @@ func messages(diagnostics []Diagnostic) []string {
 }
 
 func TestDiagnosticsReportsTrailingComments(t *testing.T) {
-	text := "[Service]\nExecStart=/bin/true # an argument\nEnvironment=A=1 # b\nType=simple # main\nRemainAfterExit=yes ; x\nTimeoutStartSec=5 # c\n"
+	text := "[Service]\nExecStart=/bin/true #argument\nEnvironment=A=1 # b\nType=simple # main\nRemainAfterExit=yes ; x\nTimeoutStartSec=5 # c\n"
 	diagnostics := Diagnostics(NewCatalog(), text, "service")
 	if len(diagnostics) != 3 {
 		t.Fatalf("diagnostics = %q, want three trailing comments", messages(diagnostics))
@@ -543,5 +543,42 @@ func TestDiagnosticsReportsShellSyntaxInCommands(t *testing.T) {
 		if diagnostics := DropInDiagnostics(NewCatalog(), "[Service]\n"+line+"\n", "service"); len(diagnostics) != 0 {
 			t.Errorf("%s: %q, want no diagnostics", line, messages(diagnostics))
 		}
+	}
+}
+
+func TestDiagnosticsReportsTrailingCommentsAfterNamesAndPaths(t *testing.T) {
+	reported := map[string]string{
+		"User=www-data # web user":            `"# web user" is read as part of the value of User`,
+		"Group=www-data ; group":              `"; group" is read as part of the value of Group`,
+		"WorkingDirectory=/srv/app # dir":     `"# dir" is read as part of the value of WorkingDirectory`,
+		"PIDFile=/run/a.pid # pid":            `"# pid" is read as part of the value of PIDFile`,
+		"EnvironmentFile=-/etc/default/a # e": `"# e" is read as part of the value of EnvironmentFile`,
+		"ReadWritePaths=/a /b # data":         `"# data" is read as part of the value of ReadWritePaths`,
+		"StateDirectory=demo # state":         `"# state" is read as part of the value of StateDirectory`,
+		"Slice=web.slice # slice":             `"# slice" is read as part of the value of Slice`,
+		"ExecStart=/usr/bin/a --flag # start": `"#" and the words after it are passed to the ExecStart= command as arguments`,
+	}
+	for line, want := range reported {
+		diagnostics := DropInDiagnostics(NewCatalog(), "[Service]\n"+line+"\n", "service")
+		if len(diagnostics) != 1 || diagnostics[0].Severity != SeverityWarning ||
+			!strings.HasPrefix(diagnostics[0].Message, "systemd does not support trailing comments; ") || !strings.HasSuffix(diagnostics[0].Message, want) {
+			t.Errorf("%s: %q, want %q", line, messages(diagnostics), want)
+		}
+	}
+	accepted := []string{
+		"User=www-data", "WorkingDirectory=/srv/my#app", "WorkingDirectory=~",
+		`ReadWritePaths="/srv/my app/# data"`, "ReadWritePaths=/a#b /c",
+		// Free text, where # may be part of the value.
+		"SyslogIdentifier=demo # id", "Environment=TITLE=issue # 5",
+		// A word that only starts with # may be an argument.
+		"ExecStart=/usr/bin/a #channel", "ExecStart=/usr/bin/a '#' \"# x\"",
+	}
+	for _, line := range accepted {
+		if diagnostics := DropInDiagnostics(NewCatalog(), "[Service]\n"+line+"\n", "service"); len(diagnostics) != 0 {
+			t.Errorf("%s: %q, want no diagnostics", line, messages(diagnostics))
+		}
+	}
+	if diagnostics := DropInDiagnostics(NewCatalog(), "[Unit]\nDescription=Demo # 1\nConditionPathExists=/etc/demo # config\n", "service"); len(diagnostics) != 1 || diagnostics[0].Range.Start.Line != 2 {
+		t.Errorf("unit section: %q, want one diagnostic on ConditionPathExists=", messages(diagnostics))
 	}
 }

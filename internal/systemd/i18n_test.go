@@ -15,10 +15,18 @@ func TestNormalizeLocale(t *testing.T) {
 }
 
 func TestJapaneseDirectiveDocFallback(t *testing.T) {
-	doc := DirectiveDocFor("Service", Directive{Name: "UnknownNewDirective", Doc: "English documentation."}, LocaleJapanese)
-	want := "systemd の [Service] セクションで使用する UnknownNewDirective ディレクティブです。"
-	if doc != want {
-		t.Fatalf("doc = %q, want %q", doc, want)
+	// A translation wins, then the untranslated description, then a generic sentence.
+	for _, tc := range []struct {
+		directive Directive
+		want      string
+	}{
+		{Directive{Name: "UnknownNewDirective", Doc: "English documentation.", DocJapanese: "日本語の説明。"}, "日本語の説明。"},
+		{Directive{Name: "UnknownNewDirective", Doc: "English documentation."}, "English documentation."},
+		{Directive{Name: "UnknownNewDirective"}, "systemd の [Service] セクションで使用する UnknownNewDirective ディレクティブです。"},
+	} {
+		if doc := DirectiveDocFor("Service", tc.directive, LocaleJapanese); doc != tc.want {
+			t.Errorf("doc = %q, want %q", doc, tc.want)
+		}
 	}
 }
 

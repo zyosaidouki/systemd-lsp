@@ -51,6 +51,10 @@ func DirectiveDocFor(section string, directive Directive, locale string) string 
 	if doc, ok := japaneseDirectiveDocs[directive.Name]; ok {
 		return doc
 	}
+	// An untranslated description says more than a generic sentence.
+	if directive.Doc != "" {
+		return directive.Doc
+	}
 	return "systemd の [" + section + "] セクションで使用する " + directive.Name + " ディレクティブです。"
 }
 

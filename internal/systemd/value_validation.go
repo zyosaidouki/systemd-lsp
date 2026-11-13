@@ -13,14 +13,35 @@ func validateDirectiveValue(d Directive, value string) string {
 		return ""
 	}
 	message := checkDirectiveValue(d, value)
-	if message == "" {
-		return ""
-	}
-	// Unit files have no trailing comments. Say so when that is the mistake.
-	if head, comment, ok := cutTrailingComment(value); ok && checkDirectiveValue(d, head) == "" {
+	// Unit files have no trailing comments. Say so when that is the mistake:
+	// the value is only valid without the comment, or it is a name or path,
+	// where a word starting with # is not something anyone means.
+	head, comment, ok := cutTrailingComment(value)
+	switch {
+	case !ok:
+	case message != "" && checkDirectiveValue(d, head) == "",
+		message == "" && commentFreeParsers[d.Parser] && !strings.ContainsAny(value, `'"`):
 		return fmt.Sprintf("systemd does not support trailing comments; %q is read as part of the value of %s", comment, d.Name)
 	}
 	return message
+}
+
+// Parsers of user and group names, unit names and file system paths. Their
+// values are not otherwise validated here.
+var commentFreeParsers = map[string]bool{
+	"config_parse_user_group_compat":      true,
+	"config_parse_user_group_strv_compat": true,
+	"config_parse_unit_slice":             true,
+	"config_parse_working_directory":      true,
+	"config_parse_pid_file":               true,
+	"config_parse_unit_env_file":          true,
+	"config_parse_unit_path_printf":       true,
+	"config_parse_unit_path_strv_printf":  true,
+	"config_parse_namespace_path_strv":    true,
+	"config_parse_bind_paths":             true,
+	"config_parse_exec_directories":       true,
+	"config_parse_path_spec":              true,
+	"config_parse_unit_condition_path":    true,
 }
 
 // cutTrailingComment splits a value at a # or ; that follows whitespace.
