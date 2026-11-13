@@ -100,6 +100,8 @@ func diagnose(catalog *Catalog, text, unitType string, dropIn bool) []Diagnostic
 			}
 			if message := validateDirectiveValue(directive, entry.Value); message != "" {
 				diagnostics = append(diagnostics, diagnostic(entry, SeverityWarning, message))
+			} else if message := checkExecDirectories(directive, entry.Value, majorVersion(catalog.Version)); message != "" {
+				diagnostics = append(diagnostics, diagnostic(entry, SeverityWarning, message))
 			}
 			if lastValues[section] == nil {
 				lastValues[section] = map[string]Entry{}

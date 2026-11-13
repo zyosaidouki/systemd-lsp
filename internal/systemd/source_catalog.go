@@ -258,6 +258,7 @@ var additiveParsers = map[string]bool{
 	"config_parse_io_device_latency":           true,
 	"config_parse_io_device_weight":            true,
 	"config_parse_io_limit":                    true,
+	"config_parse_io_uring_filter":             true,
 	"config_parse_namespace_flags":             true,
 	"config_parse_numa_mask":                   true,
 	"config_parse_open_file":                   true,

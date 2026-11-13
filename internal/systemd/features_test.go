@@ -18,6 +18,8 @@ func TestLatestFeatureCatalog(t *testing.T) {
 		{"Service", "NUMAPolicy", "weighted-interleave"},
 		{"Service", "SecureBits", "exec-deny-interactive-locked"},
 		{"Slice", "ActivatingConcurrencyMax", "infinity"},
+		{"Service", "IOUringFilter", "uring_cmd128"},
+		{"Socket", "IOUringFilter", "nop"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			d, ok := c.Directive(tc.section, tc.name)
@@ -83,6 +85,51 @@ func TestFeatureValueVersions(t *testing.T) {
 				t.Fatalf("got %v, want %v", got, tc.want)
 			}
 		})
+	}
+}
+
+func TestDevelopmentDirectivesNeedTheirRelease(t *testing.T) {
+	for version, want := range map[string]int{"v262.2": 0, "v263-devel": 1, "v263": 1} {
+		file := EnrichCatalogFeatures(CatalogFile{Version: version, Directives: []CatalogDirective{{Section: "Service", Name: "IOUringFilter", Parser: "config_parse_io_uring_filter"}}})
+		if len(file.Directives) != want {
+			t.Errorf("%s: %d IOUringFilter directives, want %d", version, len(file.Directives), want)
+		}
+	}
+	if d, ok := NewCatalog().Directive("Service", "IOUringFilter"); !ok || !d.Multiple || d.Since != 263 {
+		t.Fatalf("embedded catalog: %#v", d)
+	}
+}
+
+func TestExecDirectoriesBelowPrivate(t *testing.T) {
+	directories := []CatalogDirective{
+		{Section: "Service", Name: "ExecStart", Parser: "config_parse_exec"},
+		{Section: "Service", Name: "StateDirectory", Parser: "config_parse_exec_directories"},
+		{Section: "Service", Name: "ConfigurationDirectory", Parser: "config_parse_exec_directories"},
+	}
+	older := NewCatalog()
+	older.MergeCatalogFile(CatalogFile{Version: "v262", Directives: directories})
+	for _, tc := range []struct {
+		catalog       *Catalog
+		line, message string
+	}{
+		{NewCatalog(), "StateDirectory=demo demo/private privatedata %N/x:private-link demo::ro", ""},
+		{NewCatalog(), "StateDirectory=private", `StateDirectory path "private" is at or below private/, which is reserved for DynamicUser=; systemd ignores "private"`},
+		{NewCatalog(), "StateDirectory=demo ./private//cache:link", `StateDirectory path "./private//cache" is at or below private/, which is reserved for DynamicUser=; systemd ignores "./private//cache:link"`},
+		{NewCatalog(), "StateDirectory=demo:private/link:ro", `StateDirectory symlink "private/link" is at or below private/, which is reserved for DynamicUser=; systemd ignores "demo:private/link:ro"`},
+		{NewCatalog(), "StateDirectory='private/a b'", `StateDirectory path "private/a b" is at or below private/, which is reserved for DynamicUser=; systemd ignores "private/a b"`},
+		// A symlink is not supported at all there, which is another mistake.
+		{NewCatalog(), "ConfigurationDirectory=demo:private", ""},
+		// Before v263 only the directory itself was checked.
+		{older, "StateDirectory=demo:private/link", ""},
+		{older, "StateDirectory=private/demo", `StateDirectory path "private/demo" is at or below private/, which is reserved for DynamicUser=; systemd ignores "private/demo"`},
+	} {
+		diagnostics := fragmentDiagnostics(tc.catalog, "[Service]\nExecStart=/bin/true\n"+tc.line+"\n", "service")
+		switch {
+		case tc.message == "" && len(diagnostics) != 0:
+			t.Errorf("%s: %q, want no diagnostics", tc.line, messages(diagnostics))
+		case tc.message != "" && (len(diagnostics) != 1 || diagnostics[0].Message != tc.message || diagnostics[0].Severity != SeverityWarning):
+			t.Errorf("%s: %q, want %q", tc.line, messages(diagnostics), tc.message)
+		}
 	}
 }
 
@@ -152,6 +199,13 @@ func TestNewFeatureDiagnostics(t *testing.T) {
 		{"concurrency negative", "[Slice]\nActivatingConcurrencyMax=-1", "slice", "unsigned 32-bit"},
 		{"concurrency overflow", "[Slice]\nActivatingConcurrencyMax=4294967296", "slice", "unsigned 32-bit"},
 		{"concurrency wrong section", "[Service]\nActivatingConcurrencyMax=4", "service", "unknown directive"},
+		{"io_uring lists", "[Service]\nIOUringFilter=read write,fsync , \"statx\"\nIOUringFilter=~uring_cmd uring_cmd128\nIOUringFilter=~\nIOUringFilter=", "service", ""},
+		{"io_uring typo", "[Service]\nIOUringFilter=read wirte", "service", `unknown io_uring operation "wirte" for IOUringFilter; systemd ignores it`},
+		{"io_uring case", "[Service]\nIOUringFilter=~URING_CMD", "service", `names are case-sensitive, use "uring_cmd"`},
+		{"io_uring late inversion", "[Service]\nIOUringFilter=read ~write", "service", "~ is only recognized at the start of the value"},
+		{"io_uring quoted list", "[Service]\nIOUringFilter=\"read,write\"", "service", `unknown io_uring operation "read,write"`},
+		{"io_uring trailing comment", "[Service]\nIOUringFilter=read # only reads", "service", "trailing comments"},
+		{"io_uring wrong section", "[Unit]\nIOUringFilter=read", "service", "unknown directive"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			ds := fragmentDiagnostics(c, tc.text, tc.unit)

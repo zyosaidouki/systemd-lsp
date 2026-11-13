@@ -280,8 +280,9 @@ let g:systemd_lsp_catalog_path = '/path/to/catalog.json'
 
 ### 新しい systemd 設定への対応
 
-内蔵カタログは [systemd v262-rc2](https://github.com/systemd/systemd/releases/tag/v262-rc2) の
-パーサーから生成しています。v262 の項目は先行対応です。
+内蔵カタログは systemd の開発ブランチ（v263 開発版、コミット
+[9571d664d89c](https://github.com/systemd/systemd/commit/9571d664d89c9576564f332933781687414eb370)）の
+パーサーから生成しています。v262 までの項目はリリース済みで、v263 の項目は先行対応です。
 
 - `PrivateUsers=full` を正しい値として扱い、対象バージョンに合う値を補完します。
 - `CPUSetPartition=`、`CPUPressureWatch=`、`IOPressureWatch=`、`FileDescriptorStorePreserve=` に値補完と日本語・英語の説明を提供します。
@@ -289,6 +290,8 @@ let g:systemd_lsp_catalog_path = '/path/to/catalog.json'
 - `ConditionFraction=`／`AssertFraction=`、`ConditionMachineTag=`／`AssertMachineTag=` に編集可能なスニペットを提供します。スニペット非対応クライアントでは通常の `キー=` を挿入します。
 - 配備割合の範囲・小数桁数、列挙値、`ActivatingConcurrencyMax=` の数値を検証します。`CPUSetPartition=` に必要な `AllowedCPUs=` が同じ文書にない場合はヒントを表示します。
 - `RestartRandomizedDelaySec=`、`ActivatingConcurrencyMax=`、`NUMAPolicy=` と `SecureBits=` の新しい値に v262 向けの説明を提供します。
+- v263 で追加される `IOUringFilter=` に、io_uring 操作名の補完（空白・カンマ区切り、先頭の `~` による拒否リスト）と説明を提供します。systemd が無視する未知の操作名、大文字・小文字の誤り、先頭以外の `~` を警告します。
+- `StateDirectory=` などのディレクトリ設定で `private/` 以下を指す項目を警告します。systemd はその項目を無視します。シンボリックリンク先の検査は v263 以降のカタログでのみ行います。
 
 診断は開いている文書内の静的な検証です。他のユニットファイルやドロップインの統合、
 実行先のカーネル機能の検出は行いません。

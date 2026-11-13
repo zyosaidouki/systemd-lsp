@@ -281,9 +281,10 @@ let g:systemd_lsp_catalog_path = '/path/to/catalog.json'
 
 ### Recent systemd settings
 
-The embedded catalog is generated from the parser in
-[systemd v262-rc2](https://github.com/systemd/systemd/releases/tag/v262-rc2).
-The v262 features are preview support.
+The embedded catalog is generated from the parser on systemd's development
+branch for v263, at commit
+[9571d664d89c](https://github.com/systemd/systemd/commit/9571d664d89c9576564f332933781687414eb370).
+Features up to v262 are released; the v263 features are preview support.
 
 - Accepts `PrivateUsers=full` and completes values for the selected catalog version.
 - Provides value completion and English/Japanese descriptions for `CPUSetPartition=`, `CPUPressureWatch=`, `IOPressureWatch=`, and `FileDescriptorStorePreserve=`.
@@ -291,6 +292,8 @@ The v262 features are preview support.
 - Offers editable snippets for `ConditionFraction=`/`AssertFraction=` and `ConditionMachineTag=`/`AssertMachineTag=`. Clients without snippet support receive ordinary `Key=` insertions.
 - Checks rollout percentages and precision, enum values, and `ActivatingConcurrencyMax=` numbers. Shows a hint if `CPUSetPartition=` has no accompanying `AllowedCPUs=` in the same document.
 - Documents v262's `RestartRandomizedDelaySec=`, `ActivatingConcurrencyMax=`, and new `NUMAPolicy=` and `SecureBits=` values.
+- Completes and documents io_uring operation names for v263's `IOUringFilter=`, separated by spaces or commas, including deny lists with a leading `~`. Warns about operations systemd ignores because it does not know them, wrongly capitalized names, and a `~` that is not at the start.
+- Warns about entries at or below `private/` in `StateDirectory=` and the other directory settings, which systemd ignores. The symlink of an entry is only checked with a catalog for v263 or later.
 
 Diagnostics are static checks of the open document. They do not merge other unit
 files or drop-ins, or detect kernel features on the deployment host.

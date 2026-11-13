@@ -8,7 +8,9 @@ import (
 
 // These refinements supplement the gperf parser types. Sources are the tagged
 // upstream manuals: v261/man/systemd.{exec,service,unit,resource-control}.xml
-// and v262-rc2/man/systemd.{exec,service,slice}.xml. Gperf remains authoritative
+// and v262/man/systemd.{exec,service,slice}.xml. v263 is not released yet; its
+// refinements follow man/systemd.exec.xml and src/shared/io-uring-filter.c at
+// commit 9571d664d89c of the development branch. Gperf remains authoritative
 // for which directives exist in a catalog; refinements never add directives.
 type featureSpec struct {
 	sections   []string
@@ -30,6 +32,19 @@ var resourceSections = []string{"Service", "Socket", "Mount", "Swap", "Slice", "
 
 func withBooleans(values ...string) []string {
 	return append(append([]string{}, boolValues...), values...)
+}
+
+// io_uring_op_table, in opcode order: IORING_OP_ constants in lower case.
+var ioUringOperations = []string{
+	"nop", "readv", "writev", "fsync", "read_fixed", "write_fixed", "poll_add", "poll_remove",
+	"sync_file_range", "sendmsg", "recvmsg", "timeout", "timeout_remove", "accept", "async_cancel",
+	"link_timeout", "connect", "fallocate", "openat", "close", "files_update", "statx", "read", "write",
+	"fadvise", "madvise", "send", "recv", "openat2", "epoll_ctl", "splice", "provide_buffers",
+	"remove_buffers", "tee", "shutdown", "renameat", "unlinkat", "mkdirat", "symlinkat", "linkat",
+	"msg_ring", "fsetxattr", "setxattr", "fgetxattr", "getxattr", "socket", "uring_cmd", "send_zc",
+	"sendmsg_zc", "read_multishot", "waitid", "futex_wait", "futex_wake", "futex_waitv",
+	"fixed_fd_install", "ftruncate", "bind", "listen", "recv_zc", "epoll_wait", "readv_fixed",
+	"writev_fixed", "pipe", "nop128", "uring_cmd128",
 }
 
 var featureSpecs = map[string]featureSpec{
@@ -106,21 +121,21 @@ var featureSpecs = map[string]featureSpec{
 	},
 	"RestartRandomizedDelaySec": {
 		sections: []string{"Service"}, since: 262, kind: "duration",
-		doc:     "Adds a uniformly random delay to RestartSec= and any exponential backoff on automatic restart, spreading simultaneous restarts. Preview support based on v262-rc2.",
-		ja:      "自動再起動時に RestartSec= や指数バックオフへランダムな遅延を加え、一斉再起動を分散します。v262-rc2 に基づく先行対応です。",
+		doc:     "Adds a uniformly random delay to RestartSec= and any exponential backoff on automatic restart, spreading simultaneous restarts.",
+		ja:      "自動再起動時に RestartSec= や指数バックオフへランダムな遅延を加え、一斉再起動を分散します。",
 		example: "Restart=on-failure\nRestartSec=5s\nRestartRandomizedDelaySec=30s", man: "systemd.service(5)",
 	},
 	"ActivatingConcurrencyMax": {
 		sections: []string{"Slice"}, since: 262, kind: "concurrency", values: []string{"infinity"},
-		doc:     "Limits simultaneous activations in this slice hierarchy. Excess starts wait in the queue; infinity disables the limit. 0 blocks all starts until raised. Configure service startup timeouts to avoid occupied slots being stuck. Preview support based on v262-rc2.",
-		ja:      "スライス階層内で同時に起動処理できるユニット数を制限します。超過分は待機し、infinity は無制限です。0 は値を上げるまで全起動を保留します。起動枠が塞がれ続けないようサービス側に起動タイムアウトを設定します。v262-rc2 に基づく先行対応です。",
+		doc:     "Limits simultaneous activations in this slice hierarchy. Excess starts wait in the queue; infinity disables the limit. 0 blocks all starts until raised. Configure service startup timeouts to avoid occupied slots being stuck.",
+		ja:      "スライス階層内で同時に起動処理できるユニット数を制限します。超過分は待機し、infinity は無制限です。0 は値を上げるまで全起動を保留します。起動枠が塞がれ続けないようサービス側に起動タイムアウトを設定します。",
 		example: "ActivatingConcurrencyMax=4", syntax: "ActivatingConcurrencyMax=<unsigned integer>|infinity", man: "systemd.slice(5)",
 	},
 	"NUMAPolicy": {
 		sections: execSections, since: 243, kind: "enum", values: []string{"default", "preferred", "bind", "interleave", "local", "preferred-many", "weighted-interleave"},
 		valueSince: map[string]int{"preferred-many": 262, "weighted-interleave": 262},
-		doc:        "Sets the NUMA memory policy; NUMAMask= selects nodes. preferred-many requires Linux 5.15+; weighted-interleave requires Linux 6.9+ and kernel-configured weights. Both new policies require systemd v262 (preview).",
-		ja:         "NUMAメモリ配置方針です。対象ノードは NUMAMask= で指定します。preferred-many は Linux 5.15 以降、weighted-interleave は Linux 6.9 以降とカーネル側の重み設定が必要です。この2値は systemd v262 向けの先行対応です。",
+		doc:        "Sets the NUMA memory policy; NUMAMask= selects nodes. preferred-many requires Linux 5.15+; weighted-interleave requires Linux 6.9+ and kernel-configured weights. Both new policies require systemd v262.",
+		ja:         "NUMAメモリ配置方針です。対象ノードは NUMAMask= で指定します。preferred-many は Linux 5.15 以降、weighted-interleave は Linux 6.9 以降とカーネル側の重み設定が必要です。この2値は systemd v262 以降で使えます。",
 		example:    "NUMAPolicy=bind\nNUMAMask=0", man: "systemd.exec(5)",
 	},
 	// Booleans that later gained further values. Treating them as plain
@@ -148,9 +163,15 @@ var featureSpecs = map[string]featureSpec{
 		sections: execSections, kind: "enum-list", multiple: true,
 		values:     []string{"keep-caps", "keep-caps-locked", "no-setuid-fixup", "no-setuid-fixup-locked", "noroot", "noroot-locked", "no-cap-ambient-raise", "no-cap-ambient-raise-locked", "exec-restrict-file", "exec-restrict-file-locked", "exec-deny-interactive", "exec-deny-interactive-locked"},
 		valueSince: map[string]int{"no-cap-ambient-raise": 262, "no-cap-ambient-raise-locked": 262, "exec-restrict-file": 262, "exec-restrict-file-locked": 262, "exec-deny-interactive": 262, "exec-deny-interactive-locked": 262},
-		doc:        "Space-separated securebits flags. Repeated assignments combine flags; an empty assignment resets them. no-cap-ambient-raise, exec-restrict-file, exec-deny-interactive and their locked variants are v262 preview additions.",
-		ja:         "securebits フラグを空白区切りで指定します。複数回の代入はフラグを結合し、空の代入でリセットします。no-cap-ambient-raise、exec-restrict-file、exec-deny-interactive と各 locked 版は v262 向けの先行対応です。",
+		doc:        "Space-separated securebits flags. Repeated assignments combine flags; an empty assignment resets them. no-cap-ambient-raise, exec-restrict-file, exec-deny-interactive and their locked variants require systemd v262.",
+		ja:         "securebits フラグを空白区切りで指定します。複数回の代入はフラグを結合し、空の代入でリセットします。no-cap-ambient-raise、exec-restrict-file、exec-deny-interactive と各 locked 版は systemd v262 以降で使えます。",
 		example:    "SecureBits=keep-caps no-setuid-fixup", syntax: "SecureBits=<flag> ...", man: "systemd.exec(5)",
+	},
+	"IOUringFilter": {
+		sections: execSections, since: 263, kind: "io-uring-filter", values: ioUringOperations, multiple: true,
+		doc:     "Restricts the io_uring operations the unit's processes may submit. Takes operation names separated by spaces or commas; a leading ~ makes it a deny list, otherwise only the listed operations are allowed. Repeated assignments are merged, an assignment of the other type removes operations, and an empty assignment resets the list. Denied requests fail with EACCES. Requires Linux 7.0+; on older kernels io_uring_setup() fails with ENOSYS instead. Preview support based on the systemd development branch for v263.",
+		ja:      "ユニットのプロセスが発行できる io_uring 操作を制限します。操作名を空白またはカンマ区切りで指定します。先頭に ~ を付けると拒否リスト、付けなければ列挙した操作だけを許可するリストです。複数回の代入は結合され、逆の種類の代入は操作をリストから取り除き、空の代入でリセットします。拒否された要求は EACCES で失敗します。Linux 7.0 以降が必要で、古いカーネルでは代わりに io_uring_setup() が ENOSYS で失敗します。systemd v263 の開発版に基づく先行対応です。",
+		example: "IOUringFilter=~uring_cmd uring_cmd128 send_zc sendmsg_zc recv_zc", syntax: "IOUringFilter=[~]operation ...", man: "systemd.exec(5)",
 	},
 }
 

@@ -13,17 +13,24 @@ func (s *Server) valueCompletions(section, key, value, line string, position Pos
 	}
 	before := prefixAt(line, position.Character)
 	valueStart := len(before) - len(value)
-	list := directive.ValueKind == "enum-list" || directive.ValueKind == "resource-list"
+	// IOUringFilter= also separates operations with commas, and only takes
+	// ~ at the start of the value.
+	filter := directive.ValueKind == "io-uring-filter"
+	list := filter || directive.ValueKind == "enum-list" || directive.ValueKind == "resource-list"
+	separators := " \t"
+	if filter {
+		separators += ","
+	}
 	tokenStart := 0
 	if list {
-		tokenStart = strings.LastIndexAny(value, " \t") + 1
+		tokenStart = strings.LastIndexAny(value, separators) + 1
 	}
 	for tokenStart < len(value) && (value[tokenStart] == ' ' || value[tokenStart] == '\t') {
 		tokenStart++
 	}
 	prior := strings.TrimSpace(value[:tokenStart])
-	inverted := directive.ValueKind == "resource-list" && strings.HasPrefix(strings.TrimSpace(value), "~")
-	if inverted && tokenStart < len(value) && value[tokenStart] == '~' {
+	inverted := (filter || directive.ValueKind == "resource-list") && strings.HasPrefix(strings.TrimSpace(value), "~")
+	if inverted && tokenStart < len(value) && value[tokenStart] == '~' && (!filter || prior == "") {
 		tokenStart++
 	}
 	if tokenStart < len(value) && (value[tokenStart] == '\'' || value[tokenStart] == '"') {
@@ -35,12 +42,13 @@ func (s *Server) valueCompletions(section, key, value, line string, position Pos
 	}
 	start := valueStart + tokenStart
 	end := len(before)
-	for end < len(line) && !strings.ContainsRune(" \t\r\n\"'", rune(line[end])) {
+	for end < len(line) && !strings.ContainsRune(separators+"\r\n\"'", rune(line[end])) {
 		end++
 	}
 	used := map[string]bool{}
 	if list {
-		for _, word := range strings.Fields(strings.TrimPrefix(prior, "~")) {
+		words := strings.FieldsFunc(strings.TrimPrefix(prior, "~"), func(r rune) bool { return strings.ContainsRune(separators, r) })
+		for _, word := range words {
 			used[strings.Trim(word, "\"'")] = true
 		}
 	}

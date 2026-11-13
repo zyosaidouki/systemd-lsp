@@ -48,6 +48,9 @@ func TestValueCompletionPreservesSurroundingText(t *testing.T) {
 		{"SecureBits=keep-caps no-s¦", "no-setuid-fixup", "SecureBits=keep-caps no-setuid-fixup"},
 		{"SecureBits=keep-caps \"no-s¦\"", "no-setuid-fixup", "SecureBits=keep-caps \"no-setuid-fixup\""},
 		{"  IOPressureWatch= au¦to", "auto", "  IOPressureWatch= auto"},
+		{"IOUringFilter=~ur¦", "uring_cmd", "IOUringFilter=~uring_cmd"},
+		{"IOUringFilter=~uring_cmd,send_¦", "send_zc", "IOUringFilter=~uring_cmd,send_zc"},
+		{"IOUringFilter=read wri¦te,fsync", "writev", "IOUringFilter=read writev,fsync"},
 	} {
 		t.Run(tc.line, func(t *testing.T) {
 			items := completionRequest(t, server, "Service", tc.line)
@@ -77,6 +80,23 @@ func TestResourceListCompletionDoesNotMixBooleansOrDuplicateValues(t *testing.T)
 	items := completionRequest(t, server, "Service", "RefreshOnReload=~¦")
 	if len(items) != 2 || !hasCompletion(items, "extensions") || !hasCompletion(items, "credentials") {
 		t.Fatalf("invalid inverted candidates: %#v", items)
+	}
+}
+
+func TestIOUringFilterCompletion(t *testing.T) {
+	server := NewServer(systemd.NewCatalog(), nil)
+	items := completionRequest(t, server, "Service", "IOUringFilter=~read,write ¦")
+	if hasCompletion(items, "read") || hasCompletion(items, "write") || !hasCompletion(items, "readv") {
+		t.Fatalf("listed operations must not be offered again: %#v", items)
+	}
+	// Only the first ~ inverts the list; a later one is not part of a name.
+	if items := completionRequest(t, server, "Service", "IOUringFilter=~read ~wr¦"); len(items) != 0 {
+		t.Fatalf("completed after a misplaced ~: %#v", items)
+	}
+	pinned := systemd.NewCatalog()
+	pinned.MergeCatalogFile(systemd.CatalogFile{Version: "v262", Directives: []systemd.CatalogDirective{{Section: "Service", Name: "IOUringFilter"}}})
+	if items := completionRequest(t, NewServer(pinned, nil), "Service", "¦"); hasCompletion(items, "IOUringFilter") {
+		t.Fatal("IOUringFilter leaked into a v262 catalog")
 	}
 }
 

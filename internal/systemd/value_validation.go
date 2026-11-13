@@ -101,6 +101,28 @@ func checkDirectiveValue(d Directive, value string) string {
 		if fraction < 0 || fraction > 10000 {
 			return fmt.Sprintf("%s percentage must be between 0%% and 100%%", d.Name)
 		}
+	case "io-uring-filter":
+		// Only a ~ at the very start inverts the list. Operations systemd
+		// does not know are skipped with a warning in the journal.
+		words, complete := splitWords(strings.TrimPrefix(value, "~"), " \t,")
+		if !complete {
+			return ""
+		}
+		for _, word := range words {
+			if contains(d.Values, word) {
+				continue
+			}
+			message := fmt.Sprintf("unknown io_uring operation %q for %s; systemd ignores it", word, d.Name)
+			if strings.HasPrefix(word, "~") {
+				return message + "; ~ is only recognized at the start of the value"
+			}
+			for _, known := range d.Values {
+				if strings.EqualFold(known, word) {
+					return message + fmt.Sprintf("; names are case-sensitive, use %q", known)
+				}
+			}
+			return message
+		}
 	case "concurrency":
 		if value != "infinity" {
 			if _, err := parseSystemdUnsigned(value); err != nil {
@@ -187,6 +209,48 @@ func checkTypedValue(d Directive, value string) string {
 		}
 	}
 	return ""
+}
+
+// checkExecDirectories follows config_parse_exec_directories(), which skips
+// entries at or below private/, the location of DynamicUser= directories.
+// The symlink of an entry is only checked from v263 on.
+func checkExecDirectories(d Directive, value string, version int) string {
+	if d.Parser != "config_parse_exec_directories" || strings.Contains(value, "\\") {
+		return ""
+	}
+	words, complete := valueWords(value)
+	if !complete {
+		return ""
+	}
+	for _, word := range words {
+		path, symlink, _ := strings.Cut(word, ":")
+		symlink, _, _ = strings.Cut(symlink, ":")
+		what := ""
+		switch {
+		case belowPrivate(path):
+			what = "path " + strconv.Quote(path)
+		case d.Name != "ConfigurationDirectory" && (version == 0 || version >= 263) && belowPrivate(symlink):
+			what = "symlink " + strconv.Quote(symlink)
+		default:
+			continue
+		}
+		return fmt.Sprintf("%s %s is at or below private/, which is reserved for DynamicUser=; systemd ignores %q", d.Name, what, word)
+	}
+	return ""
+}
+
+// belowPrivate reports whether the first component of a relative path is
+// "private". Paths with specifiers are only known once the unit is loaded.
+func belowPrivate(path string) bool {
+	if strings.HasPrefix(path, "/") || strings.Contains(path, "%") {
+		return false
+	}
+	for _, component := range strings.Split(path, "/") {
+		if component != "" && component != "." {
+			return component == "private"
+		}
+	}
+	return false
 }
 
 var unitNameTypes = []string{"service", "socket", "target", "device", "mount", "automount", "swap", "timer", "path", "slice", "scope"}
@@ -437,6 +501,11 @@ func parseFraction(value string) (int64, error) {
 // valueWords handles plain and quoted words. Escapes are intentionally left to
 // systemd, and unfinished quotes are ignored while the user is still typing.
 func valueWords(value string) ([]string, bool) {
+	return splitWords(value, " \t")
+}
+
+// splitWords is valueWords for settings with further separators.
+func splitWords(value, separators string) ([]string, bool) {
 	var words []string
 	var word strings.Builder
 	var quote rune
@@ -452,11 +521,11 @@ func valueWords(value string) ([]string, bool) {
 				word.WriteRune(r)
 			}
 		} else {
-			switch r {
-			case '\'', '"':
+			switch {
+			case r == '\'' || r == '"':
 				quote = r
 				started = true
-			case ' ', '\t':
+			case strings.ContainsRune(separators, r):
 				if started {
 					words = append(words, word.String())
 					word.Reset()
