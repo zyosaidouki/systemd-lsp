@@ -16,20 +16,24 @@ concurrency:
 
 jobs:
   test:
-    # Only execute repository-owned code on the persistent runner.
-    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+    # Only execute repository-owned code on the persistent runner. Dependabot
+    # pull requests change the pinned actions, so they run after being merged.
+    if: >-
+      github.event_name != 'pull_request' ||
+      (github.event.pull_request.head.repo.full_name == github.repository &&
+      github.event.pull_request.user.login != 'dependabot[bot]')
     runs-on: [self-hosted, Linux, X64]
     timeout-minutes: 15
     outputs:
       release_tag: ${{ steps.release-version.outputs.tag }}
     steps:
       - name: Check out source
-        uses: actions/checkout@v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
 
       - name: Set up Go
-        uses: actions/setup-go@v7
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
           go-version-file: go.mod
           cache: false
@@ -62,7 +66,7 @@ jobs:
           tar -czf dist/systemd-lsp-linux-amd64.tar.gz -C dist/linux-amd64 systemd-lsp
 
       - name: Upload Linux x86-64 build
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: systemd-lsp-linux-amd64
           path: dist/systemd-lsp-linux-amd64.tar.gz
@@ -80,7 +84,7 @@ jobs:
           tar -czf dist/systemd-lsp-darwin-arm64.tar.gz -C dist/darwin-arm64 systemd-lsp
 
       - name: Upload Apple Silicon build
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: systemd-lsp-darwin-arm64
           path: dist/systemd-lsp-darwin-arm64.tar.gz
@@ -96,14 +100,14 @@ jobs:
       contents: write
     steps:
       - name: Download tested builds
-        uses: actions/download-artifact@v8
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           pattern: systemd-lsp-*
           merge-multiple: true
           path: ${{ runner.temp }}/release-${{ github.run_id }}-${{ github.run_attempt }}
 
       - name: Publish release
-        uses: actions/github-script@v9
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
         env:
           RELEASE_DIR: ${{ runner.temp }}/release-${{ github.run_id }}-${{ github.run_attempt }}
           RELEASE_TAG: ${{ needs.test.outputs.release_tag }}

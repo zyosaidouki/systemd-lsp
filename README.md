@@ -363,7 +363,9 @@ formatting, and LSP responses preserve required `null` results and empty arrays.
 
 GitHub Actions runs tests, `go vet`, and a build on the Linux x64 self-hosted
 runner for pushes to `main` and pull requests from this repository. Fork pull
-requests are skipped on the self-hosted runner. You can also start the `CI`
+requests are skipped on the self-hosted runner, and so are Dependabot's pull
+requests: they update the commits the workflow's actions are pinned to, and the
+new versions only run once the pull request is merged. You can also start the `CI`
 workflow manually from the Actions tab. The runner must be online and have the
 `self-hosted`, `Linux`, and `X64` labels; Go is installed by the workflow using
 the version specified in `go.mod`.

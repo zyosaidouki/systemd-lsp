@@ -357,6 +357,8 @@ JSON の処理には Go 1.27 の `encoding/json/v2` を使用します。
 GitHub Actions は `main` への push と同一リポジトリからのプルリクエストに対して、
 Linux x64 の self-hosted runner でテスト、`go vet`、ビルドを実行します。
 フォークからのプルリクエストは self-hosted runner ではスキップします。
+Dependabot のプルリクエストも同様です。ワークフローが使うアクションはコミットで
+固定しており、新しいバージョンはプルリクエストのマージ後に初めて実行されます。
 Actions タブから `CI` ワークフローを手動実行することもできます。
 runner はオンラインで、`self-hosted`、`Linux`、`X64` ラベルを持つ必要があります。
 Go は `go.mod` に指定されたバージョンをワークフローがインストールします。
