@@ -264,6 +264,8 @@ let g:systemd_lsp_catalog_path = '/path/to/catalog.json'
   - 複数回指定できないディレクティブの重複
   - systemd が受け付けない値（未知の列挙値や大文字・小文字の誤り、
     時間・サイズ・アクセスモード・整数・リソース上限の書式誤り）
+  - systemd が受け付けないユニット名（`After=network` のように種別の
+    接尾辞がないものや、カンマ区切りの名前）
   - 行末コメント（systemd は値の一部として読みます）
   - `MemoryLimit=` など、systemd が無視する廃止済みの設定
   - systemd が読み込みを拒否するユニット（`ExecStart=` のないサービスや、

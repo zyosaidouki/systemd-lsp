@@ -72,7 +72,9 @@ var featureSpecs = map[string]featureSpec{
 		example: "IOPressureThresholdSec=200ms", man: "systemd.resource-control(5)",
 	},
 	"FileDescriptorStorePreserve": {
-		sections: []string{"Service"}, since: 254, kind: "enum", values: []string{"no", "yes", "restart", "on-success"},
+		sections: []string{"Service"}, since: 254, kind: "enum",
+		// exec_preserve_mode_from_string() takes every boolean spelling.
+		values:     []string{"no", "yes", "restart", "on-success", "true", "false", "on", "off", "1", "0"},
 		valueSince: map[string]int{"on-success": 261},
 		doc:        "Controls file descriptor store retention. no releases it at stop, restart retains it during restart, and yes retains it until explicit cleanup. on-success (v261+) discards it only on permanent failure, after automatic restarts are exhausted.",
 		ja:         "ファイルディスクリプタストアの保持条件です。no は停止時に解放、restart は再起動中に保持、yes は明示的な削除まで保持します。on-success（v261以降）は自動再起動を使い切った最終的な失敗時に解放します。",
@@ -188,7 +190,10 @@ func EnrichCatalogFeatures(file CatalogFile) CatalogFile {
 				d.Since = spec.since
 			}
 			d.ValueKind = spec.kind
-			if len(d.Values) == 0 {
+			// A generated snapshot takes the current refinement, even if it
+			// was generated before the refinement last changed. The values
+			// of a hand-written overlay are kept.
+			if len(spec.values) > 0 && (version > 0 || len(d.Values) == 0) {
 				d.Values = spec.values
 			}
 			values := make([]string, 0, len(d.Values))

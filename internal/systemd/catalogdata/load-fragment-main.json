@@ -3686,7 +3686,13 @@
         "no",
         "yes",
         "restart",
-        "on-success"
+        "on-success",
+        "true",
+        "false",
+        "on",
+        "off",
+        "1",
+        "0"
       ]
     },
     {

@@ -42,6 +42,15 @@ var exactValueDirectives = map[string]bool{
 }
 
 func checkDirectiveValue(d Directive, value string) string {
+	if strings.HasPrefix(d.Parser, "config_parse_unit_condition_") {
+		// Conditions take | (trigger) and then ! (negate) before the value.
+		if rest, ok := strings.CutPrefix(value, "|"); ok {
+			value = strings.TrimLeft(rest, whitespace)
+		}
+		if rest, ok := strings.CutPrefix(value, "!"); ok {
+			value = strings.TrimLeft(rest, whitespace)
+		}
+	}
 	unexpected := func() string {
 		message := fmt.Sprintf("unexpected value %q for %s", value, d.Name)
 		for _, known := range d.Values {
@@ -106,6 +115,11 @@ func checkDirectiveValue(d Directive, value string) string {
 			if !containsFold(boolValues, value) && !isShortBoolean(value) {
 				return unexpected()
 			}
+		case d.Parser == "config_parse_log_level":
+			// log_level_from_string() also takes the numeric levels.
+			if level, err := strconv.ParseUint(value, 10, 8); !contains(d.Values, value) && (err != nil || level > 7) {
+				return unexpected()
+			}
 		case exactValueDirectives[d.Name]:
 			if !contains(d.Values, value) {
 				return unexpected()
@@ -156,6 +170,57 @@ func checkTypedValue(d Directive, value string) string {
 		}
 	case "config_parse_rlimit":
 		return checkResourceLimit(d.Name, value)
+	case "config_parse_unit_deps":
+		return checkUnitNames(d.Name, strings.Fields(value), "")
+	case "config_parse_trigger_unit":
+		return checkUnitNames(d.Name, []string{value}, "")
+	case "config_parse_socket_service":
+		return checkUnitNames(d.Name, []string{value}, "service")
+	case "config_parse_service_sockets":
+		return checkUnitNames(d.Name, strings.Fields(value), "socket")
+	}
+	switch d.Name {
+	case "WantedBy", "RequiredBy", "UpheldBy", "Also":
+		// Read by systemctl enable, which fails on a name that is not valid.
+		if words, complete := valueWords(value); complete {
+			return checkUnitNames(d.Name, words, "")
+		}
+	}
+	return ""
+}
+
+var unitNameTypes = []string{"service", "socket", "target", "device", "mount", "automount", "swap", "timer", "path", "slice", "scope"}
+
+// checkUnitNames follows unit_name_is_valid(). Unit files take names as they
+// are: unlike systemctl, systemd does not append .service to them. Names
+// with specifiers are only known once the unit is loaded.
+func checkUnitNames(setting string, names []string, unitType string) string {
+	for _, name := range names {
+		if strings.Contains(name, "%") {
+			continue
+		}
+		problem := ""
+		dot := strings.LastIndex(name, ".")
+		for _, r := range name {
+			if !(r >= '0' && r <= '9' || r >= 'a' && r <= 'z' || r >= 'A' && r <= 'Z' || strings.ContainsRune(":-_.\\@", r)) {
+				problem = fmt.Sprintf("%q is not allowed, and names are separated by spaces", string(r))
+				break
+			}
+		}
+		switch {
+		case problem != "":
+		case dot < 0:
+			problem = "it needs a type suffix such as .service or .target"
+		case !contains(unitNameTypes, name[dot+1:]):
+			problem = fmt.Sprintf("%q is not a unit type", name[dot:])
+		case dot == 0 || name[0] == '@' || len(name) >= 256:
+			problem = "it has no proper name before the type suffix"
+		case unitType != "" && name[dot+1:] != unitType:
+			return fmt.Sprintf("%s expects a .%s unit, not %q", setting, unitType, name)
+		default:
+			continue
+		}
+		return fmt.Sprintf("%q is not a valid unit name for %s: %s", name, setting, problem)
 	}
 	return ""
 }

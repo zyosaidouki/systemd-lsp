@@ -435,3 +435,68 @@ func TestDiagnosticsReportsUnitsSystemdRefusesToLoad(t *testing.T) {
 		t.Errorf("drop-in: %q, want no diagnostics", messages(diagnostics))
 	}
 }
+
+func TestDiagnosticsAcceptsValuesOfLenientParsers(t *testing.T) {
+	for _, tc := range []struct{ section, line string }{
+		// exec_preserve_mode_from_string() takes booleans.
+		{"Service", "FileDescriptorStorePreserve=true"}, {"Service", "FileDescriptorStorePreserve=on"},
+		{"Service", "FileDescriptorStorePreserve=on-success"},
+		// log_level_from_string() takes numbers.
+		{"Service", "LogLevelMax=0"}, {"Service", "LogLevelMax=1"}, {"Service", "SyslogLevel=7"}, {"Service", "LogLevelMax=info"},
+		// Conditions take | and ! before the value.
+		{"Unit", "ConditionACPower=!true"}, {"Unit", "ConditionACPower=|false"}, {"Unit", "ConditionACPower=| ! yes"},
+		{"Unit", "OnFailureJobMode=restart-dependencies"}, {"Unit", "OnSuccessJobMode=triggering"}, {"Unit", "OnFailureJobMode=lenient"},
+	} {
+		if diagnostics := fragmentDiagnostics(NewCatalog(), "["+tc.section+"]\n"+tc.line+"\n", "service"); len(diagnostics) != 0 {
+			t.Errorf("%s: %q, want no diagnostics", tc.line, messages(diagnostics))
+		}
+	}
+	for _, line := range []string{"FileDescriptorStorePreserve=maybe", "LogLevelMax=8", "LogLevelMax=Info", "LogLevelMax=verbose"} {
+		diagnostics := fragmentDiagnostics(NewCatalog(), "[Service]\n"+line+"\n", "service")
+		if len(diagnostics) != 1 || !strings.HasPrefix(diagnostics[0].Message, "unexpected value") {
+			t.Errorf("%s: %q, want one unexpected value", line, messages(diagnostics))
+		}
+	}
+	if diagnostics := fragmentDiagnostics(NewCatalog(), "[Unit]\nConditionACPower=!maybe\n", "service"); len(diagnostics) != 1 {
+		t.Errorf("ConditionACPower=!maybe: %q, want one diagnostic", messages(diagnostics))
+	}
+}
+
+func TestDiagnosticsValidatesUnitNames(t *testing.T) {
+	valid := []struct{ unit, section, line string }{
+		{"service", "Unit", "After=network.target local-fs.target"},
+		{"service", "Unit", "Wants=getty@tty1.service foo@.service dev-sda.device"},
+		{"service", "Unit", "OnFailure=notify@%n.service %i"},
+		{"service", "Unit", "BindsTo=sys-subsystem-net-devices-eth0.device"},
+		{"service", "Service", "Sockets=a.socket b.socket"},
+		{"service", "Install", "WantedBy=multi-user.target graphical.target"},
+		{"service", "Install", "Alias=dbus-org.example.service"},
+		{"service", "Install", "Also=demo.socket"},
+		{"socket", "Socket", "Service=demo.service"},
+		{"timer", "Timer", "Unit=demo.service"},
+		{"path", "Path", "Unit=demo.target"},
+	}
+	for _, tc := range valid {
+		if diagnostics := fragmentDiagnostics(NewCatalog(), "["+tc.section+"]\n"+tc.line+"\n", tc.unit); len(diagnostics) != 0 {
+			t.Errorf("%s: %q, want no diagnostics", tc.line, messages(diagnostics))
+		}
+	}
+	invalid := []struct{ unit, section, line, message string }{
+		{"service", "Unit", "After=network", `"network" is not a valid unit name for After: it needs a type suffix such as .service or .target`},
+		{"service", "Unit", "Wants=a.service b", `"b" is not a valid unit name for Wants: it needs a type suffix such as .service or .target`},
+		{"service", "Unit", "Requires=demo.servce", `"demo.servce" is not a valid unit name for Requires: ".servce" is not a unit type`},
+		{"service", "Unit", "After=a.service,b.service", `"a.service,b.service" is not a valid unit name for After: "," is not allowed, and names are separated by spaces`},
+		{"service", "Unit", "After=.service", `".service" is not a valid unit name for After: it has no proper name before the type suffix`},
+		{"service", "Unit", "After=network.target # later", `systemd does not support trailing comments; "# later" is read as part of the value of After`},
+		{"service", "Service", "Sockets=a.service", `Sockets expects a .socket unit, not "a.service"`},
+		{"service", "Install", "WantedBy=multi-user", `"multi-user" is not a valid unit name for WantedBy: it needs a type suffix such as .service or .target`},
+		{"socket", "Socket", "Service=demo.socket", `Service expects a .service unit, not "demo.socket"`},
+		{"timer", "Timer", "Unit=demo", `"demo" is not a valid unit name for Unit: it needs a type suffix such as .service or .target`},
+	}
+	for _, tc := range invalid {
+		diagnostics := fragmentDiagnostics(NewCatalog(), "["+tc.section+"]\n"+tc.line+"\n", tc.unit)
+		if len(diagnostics) != 1 || diagnostics[0].Message != tc.message || diagnostics[0].Severity != SeverityWarning {
+			t.Errorf("%s: %q, want %q", tc.line, messages(diagnostics), tc.message)
+		}
+	}
+}

@@ -264,6 +264,8 @@ let g:systemd_lsp_catalog_path = '/path/to/catalog.json'
   - duplicate singleton directives
   - values systemd rejects: unknown or wrongly capitalized enum values, and
     malformed time spans, sizes, access modes, integers, and resource limits
+  - unit names systemd does not accept, such as `After=network` without a
+    type suffix or names separated by commas
   - trailing comments, which systemd reads as part of the value
   - obsolete settings that systemd ignores, such as `MemoryLimit=`
   - units systemd refuses to load, such as a service without `ExecStart=`, or
