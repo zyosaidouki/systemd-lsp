@@ -21,7 +21,13 @@ let s:binary = s:root . '/bin/systemd-lsp'
 let s:updating = 0
 
 function! s:initialization_options() abort
-  let options = {'locale': get(g:, 'systemd_lsp_locale', 'en')}
+  " Unset options are left out, so the server can take them from
+  " $XDG_CONFIG_HOME/systemd-lsp/config.json.
+  let options = {}
+  let locale = get(g:, 'systemd_lsp_locale', '')
+  if !empty(locale)
+    let options.locale = locale
+  endif
   let catalog_path = get(g:, 'systemd_lsp_catalog_path', '')
   if !empty(catalog_path)
     let options.catalogPath = catalog_path

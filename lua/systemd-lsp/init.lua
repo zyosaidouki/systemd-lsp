@@ -10,8 +10,10 @@ local function enable()
     filetypes = { "systemd" },
     root_markers = { ".git" },
     workspace_required = false,
+    -- Unset options are left out, so the server can take them from
+    -- $XDG_CONFIG_HOME/systemd-lsp/config.json.
     init_options = {
-      locale = vim.g.systemd_lsp_locale or "en",
+      locale = vim.g.systemd_lsp_locale,
       catalogPath = vim.g.systemd_lsp_catalog_path,
     },
   })

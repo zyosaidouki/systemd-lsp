@@ -204,3 +204,28 @@ func execWords(value string) []string {
 	}
 	return words
 }
+
+// Targets that only the system manager has, which units are often installed
+// into out of habit, and what takes their place in the user manager.
+var userTargetReplacements = map[string]string{
+	"multi-user.target": "default.target",
+	"graphical.target":  "graphical-session.target",
+}
+
+// UserUnitDiagnostics reports settings that are valid but have no effect in a
+// unit of the user service manager. It supplements Diagnostics.
+func UserUnitDiagnostics(text string) []Diagnostic {
+	u := collectSettings(Parse(text))
+	var diagnostics []Diagnostic
+	for _, name := range []string{"WantedBy", "RequiredBy", "UpheldBy"} {
+		for _, entry := range u.assigned("Install", name) {
+			for _, target := range strings.Fields(entry.Value) {
+				if replacement := userTargetReplacements[target]; replacement != "" {
+					diagnostics = append(diagnostics, diagnostic(entry, SeverityWarning,
+						target+" is not part of the user manager, so enabling this user unit does not start it; use "+replacement+" instead"))
+				}
+			}
+		}
+	}
+	return diagnostics
+}

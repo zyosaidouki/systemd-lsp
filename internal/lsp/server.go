@@ -9,6 +9,7 @@ import (
 	"path"
 	"strings"
 
+	"github.com/zyosaidouki/systemd-lsp/internal/config"
 	"github.com/zyosaidouki/systemd-lsp/internal/systemd"
 	"github.com/zyosaidouki/systemd-lsp/internal/version"
 )
@@ -22,6 +23,7 @@ type Server struct {
 	nextRequestID  int
 	locale         string
 	snippetSupport bool
+	settings       config.Settings
 }
 
 func NewServer(catalog *systemd.Catalog, logger *log.Logger) *Server {
@@ -31,6 +33,12 @@ func NewServer(catalog *systemd.Catalog, logger *log.Logger) *Server {
 		docs:    map[string]string{},
 		locale:  systemd.LocaleEnglish,
 	}
+}
+
+// UseSettings sets what the server falls back on for anything the client
+// leaves out of initialize. Call it before handling messages.
+func (s *Server) UseSettings(settings config.Settings) {
+	s.settings = settings
 }
 
 type rpcMessage struct {
@@ -98,7 +106,7 @@ func (s *Server) dispatch(method string, params jsontext.Value) (any, [][]byte, 
 		}
 		s.docs[p.TextDocument.URI] = p.TextDocument.Text
 		if shouldInsertServiceTemplate(p.TextDocument.URI, p.TextDocument.Text) {
-			return nil, [][]byte{s.applyEditRequest(p.TextDocument.URI, defaultServiceTemplate)}, nil
+			return nil, [][]byte{s.applyEditRequest(p.TextDocument.URI, s.serviceTemplate(p.TextDocument.URI))}, nil
 		}
 		return nil, s.publishDiagnostics(p.TextDocument.URI), nil
 	case "textDocument/didChange":
@@ -204,6 +212,11 @@ func (s *Server) configure(params jsontext.Value) {
 		locale = p.InitializationOptions.Language
 	}
 	if locale == "" {
+		locale = s.settings.Locale
+	}
+	if locale == "" {
+		// The locale of the editor's user interface is only a guess at the
+		// language wanted here.
 		locale = p.Locale
 	}
 	s.locale = systemd.NormalizeLocale(locale)
@@ -211,6 +224,9 @@ func (s *Server) configure(params jsontext.Value) {
 	catalogPath := p.InitializationOptions.CatalogPath
 	if catalogPath == "" {
 		catalogPath = p.CatalogPath
+	}
+	if catalogPath == "" {
+		catalogPath = s.settings.CatalogPath
 	}
 	if catalogPath == "" {
 		return
@@ -239,6 +255,31 @@ ExecStop=
 [Install]
 WantedBy=multi-user.target
 `
+
+// The user manager has no multi-user.target; its units start with
+// default.target.
+var userServiceTemplate = strings.Replace(defaultServiceTemplate, "WantedBy=multi-user.target", "WantedBy=default.target", 1)
+
+func (s *Server) serviceTemplate(uri string) string {
+	if s.isUserUnit(uri) {
+		return userServiceTemplate
+	}
+	return defaultServiceTemplate
+}
+
+// isUserUnit reports whether the document is in the directory the user
+// manager loads the user's own units from, or in a drop-in directory there.
+func (s *Server) isUserUnit(uri string) bool {
+	dir := s.settings.UserUnitDir
+	if dir == "" {
+		return false
+	}
+	parsed, err := url.Parse(uri)
+	if err != nil || parsed.Scheme != "file" {
+		return false
+	}
+	return strings.HasPrefix(path.Clean(parsed.Path), strings.TrimSuffix(dir, "/")+"/")
+}
 
 func shouldInsertServiceTemplate(uri, text string) bool {
 	return path.Ext(documentPath(uri)) == ".service" && strings.TrimSpace(text) == ""
@@ -317,6 +358,9 @@ func (s *Server) publishDiagnostics(uri string) [][]byte {
 		diagnose = systemd.DropInDiagnostics
 	}
 	diagnostics := diagnose(s.catalog, text, unitType)
+	if s.isUserUnit(uri) {
+		diagnostics = append(diagnostics, systemd.UserUnitDiagnostics(text)...)
+	}
 	return [][]byte{notification("textDocument/publishDiagnostics", map[string]any{
 		"uri":         uri,
 		"diagnostics": diagnostics,

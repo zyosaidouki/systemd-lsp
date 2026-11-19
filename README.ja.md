@@ -35,10 +35,13 @@ command -v git curl tar sh sha256sum
 ターミナルで実行します。
 
 ```sh
-mkdir -p ~/.config/nvim/pack/lsp/start
+mkdir -p "${XDG_CONFIG_HOME:-$HOME/.config}/nvim/pack/lsp/start"
 git clone https://github.com/zyosaidouki/systemd-lsp \
-  ~/.config/nvim/pack/lsp/start/systemd-lsp
+  "${XDG_CONFIG_HOME:-$HOME/.config}/nvim/pack/lsp/start/systemd-lsp"
 ```
+
+`XDG_CONFIG_HOME` を設定している場合はそのディレクトリ、未設定の場合は `~/.config` を使います。
+以降の `~/.config` は、このディレクトリに読み替えてください。
 
 `~/.config/nvim/init.lua` に次を追記します（ファイルがなければ作成します）。
 
@@ -57,6 +60,9 @@ git clone https://github.com/prabirshrestha/vim-lsp \
 git clone https://github.com/zyosaidouki/systemd-lsp \
   ~/.vim/pack/lsp/start/systemd-lsp
 ```
+
+Vim（9.1.0327 以降）が `~/.vimrc` ではなく `$XDG_CONFIG_HOME/vim/vimrc` を読み込む構成では、
+`~/.vim` を `${XDG_CONFIG_HOME:-$HOME/.config}/vim` に、`~/.vimrc` をその `vimrc` に読み替えてください。
 
 `~/.vimrc` に次を追記します（ファイルがなければ作成します）。
 
@@ -117,10 +123,13 @@ command -v git curl tar sh shasum
 ターミナルで実行します。
 
 ```sh
-mkdir -p ~/.config/nvim/pack/lsp/start
+mkdir -p "${XDG_CONFIG_HOME:-$HOME/.config}/nvim/pack/lsp/start"
 git clone https://github.com/zyosaidouki/systemd-lsp \
-  ~/.config/nvim/pack/lsp/start/systemd-lsp
+  "${XDG_CONFIG_HOME:-$HOME/.config}/nvim/pack/lsp/start/systemd-lsp"
 ```
+
+`XDG_CONFIG_HOME` を設定している場合はそのディレクトリ、未設定の場合は `~/.config` を使います。
+以降の `~/.config` は、このディレクトリに読み替えてください。
 
 `~/.config/nvim/init.lua` に次を追記します（ファイルがなければ作成します）。
 
@@ -139,6 +148,9 @@ git clone https://github.com/prabirshrestha/vim-lsp \
 git clone https://github.com/zyosaidouki/systemd-lsp \
   ~/.vim/pack/lsp/start/systemd-lsp
 ```
+
+Vim（9.1.0327 以降）が `~/.vimrc` ではなく `$XDG_CONFIG_HOME/vim/vimrc` を読み込む構成では、
+`~/.vim` を `${XDG_CONFIG_HOME:-$HOME/.config}/vim` に、`~/.vimrc` をその `vimrc` に読み替えてください。
 
 `~/.vimrc` に次を追記します（ファイルがなければ作成します）。
 
@@ -256,6 +268,23 @@ Vim／gVim (`~/.vimrc`):
 let g:systemd_lsp_catalog_path = '/path/to/catalog.json'
 ```
 
+### 設定ファイル
+
+サーバーは `$XDG_CONFIG_HOME/systemd-lsp/config.json` も読み込みます
+（`XDG_CONFIG_HOME` が未設定、または絶対パスでない場合は `~/.config/systemd-lsp/config.json`）。
+エディタから送られなかった設定をここから補うため、同梱プラグイン以外の LSP クライアントでも使えます。
+
+```json
+{
+  "locale": "ja",
+  "catalogPath": "/path/to/catalog.json"
+}
+```
+
+どちらのキーも省略できます。相対パスの `catalogPath` は `config.json` のあるディレクトリを基準にします。
+`g:systemd_lsp_locale` と `g:systemd_lsp_catalog_path`（他のクライアントでは初期化オプションの
+`locale` と `catalogPath`）を設定している場合は、そちらを優先します。どちらもなければ英語で表示します。
+
 ## 機能
 
 - systemd ユニットファイルでよくある間違いの診断
@@ -280,6 +309,9 @@ let g:systemd_lsp_catalog_path = '/path/to/catalog.json'
 - 主な選択肢型ディレクティブの値補完
 - 既知のディレクティブのホバードキュメント
 - セクションとディレクティブのドキュメントシンボル
+- ユーザーユニットへの対応。`$XDG_CONFIG_HOME/systemd/user`（`XDG_CONFIG_HOME` が未設定の場合は
+  `~/.config/systemd/user`）以下のファイルでは、テンプレートを `WantedBy=default.target` にし、
+  user マネージャーにない `multi-user.target` や `graphical.target` を指定した `WantedBy=` などを警告します
 - 空の単独 `.service` ファイルへのテンプレート挿入。ドロップインや他のユニット種別には自動挿入しません
 
 ### 新しい systemd 設定への対応

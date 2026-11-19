@@ -582,3 +582,31 @@ func TestDiagnosticsReportsTrailingCommentsAfterNamesAndPaths(t *testing.T) {
 		t.Errorf("unit section: %q, want one diagnostic on ConditionPathExists=", messages(diagnostics))
 	}
 }
+
+func TestUserUnitDiagnostics(t *testing.T) {
+	for _, tt := range []struct {
+		text string
+		want []string
+	}{
+		{"[Install]\nWantedBy=default.target\n", nil},
+		{"[Install]\nWantedBy=graphical-session.target timers.target\n", nil},
+		{"[Install]\nWantedBy=multi-user.target\n", []string{"multi-user.target is not part of the user manager, so enabling this user unit does not start it; use default.target instead"}},
+		{"[Install]\nRequiredBy=default.target graphical.target\n", []string{"graphical.target is not part of the user manager, so enabling this user unit does not start it; use graphical-session.target instead"}},
+		{"[Install]\nWantedBy=multi-user.target\nUpheldBy=graphical.target\n", []string{"multi-user.target", "graphical.target"}},
+		// An empty assignment clears what came before it.
+		{"[Install]\nWantedBy=multi-user.target\nWantedBy=\nWantedBy=default.target\n", nil},
+		// Ordering against a system target is not an install location.
+		{"[Unit]\nAfter=multi-user.target\n", nil},
+	} {
+		got := UserUnitDiagnostics(tt.text)
+		if len(got) != len(tt.want) {
+			t.Errorf("UserUnitDiagnostics(%q) = %#v, want %d diagnostics", tt.text, got, len(tt.want))
+			continue
+		}
+		for i, want := range tt.want {
+			if !strings.Contains(got[i].Message, want) || got[i].Severity != SeverityWarning {
+				t.Errorf("UserUnitDiagnostics(%q)[%d] = %#v, want warning containing %q", tt.text, i, got[i], want)
+			}
+		}
+	}
+}

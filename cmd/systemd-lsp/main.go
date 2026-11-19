@@ -11,6 +11,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/zyosaidouki/systemd-lsp/internal/config"
 	"github.com/zyosaidouki/systemd-lsp/internal/lsp"
 	"github.com/zyosaidouki/systemd-lsp/internal/systemd"
 	"github.com/zyosaidouki/systemd-lsp/internal/update"
@@ -52,8 +53,13 @@ func main() {
 			logger.Printf("loaded generated catalog %q with %d directives", path, len(file.Directives))
 		}
 	}
+	settings, err := config.Load(os.Getenv)
+	if err != nil {
+		logger.Printf("failed to load %q: %v", config.Path(config.Home(os.Getenv)), err)
+	}
 	server := lsp.NewServer(catalog, logger)
-	err := serve(os.Stdin, os.Stdout, server)
+	server.UseSettings(settings)
+	err = serve(os.Stdin, os.Stdout, server)
 	if code, exited := server.ExitCode(); exited {
 		os.Exit(code)
 	}

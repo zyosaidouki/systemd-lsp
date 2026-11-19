@@ -35,10 +35,13 @@ use the [plugin manager configuration](#plugin-managers) instead of the clone co
 Run in a terminal:
 
 ```sh
-mkdir -p ~/.config/nvim/pack/lsp/start
+mkdir -p "${XDG_CONFIG_HOME:-$HOME/.config}/nvim/pack/lsp/start"
 git clone https://github.com/zyosaidouki/systemd-lsp \
-  ~/.config/nvim/pack/lsp/start/systemd-lsp
+  "${XDG_CONFIG_HOME:-$HOME/.config}/nvim/pack/lsp/start/systemd-lsp"
 ```
+
+The commands use `$XDG_CONFIG_HOME` when it is set and `~/.config` otherwise.
+In the rest of this document, `~/.config` stands for that directory.
 
 To select Japanese documentation, add this to `~/.config/nvim/init.lua` (create the file if needed):
 
@@ -57,6 +60,9 @@ git clone https://github.com/prabirshrestha/vim-lsp \
 git clone https://github.com/zyosaidouki/systemd-lsp \
   ~/.vim/pack/lsp/start/systemd-lsp
 ```
+
+If your Vim (9.1.0327 or newer) reads `$XDG_CONFIG_HOME/vim/vimrc` instead of `~/.vimrc`,
+use `${XDG_CONFIG_HOME:-$HOME/.config}/vim` in place of `~/.vim`, and that `vimrc` in place of `~/.vimrc`.
 
 Add this to `~/.vimrc` (create the file if needed):
 
@@ -117,10 +123,13 @@ use the [plugin manager configuration](#plugin-managers) instead of the clone co
 Run in a terminal:
 
 ```sh
-mkdir -p ~/.config/nvim/pack/lsp/start
+mkdir -p "${XDG_CONFIG_HOME:-$HOME/.config}/nvim/pack/lsp/start"
 git clone https://github.com/zyosaidouki/systemd-lsp \
-  ~/.config/nvim/pack/lsp/start/systemd-lsp
+  "${XDG_CONFIG_HOME:-$HOME/.config}/nvim/pack/lsp/start/systemd-lsp"
 ```
+
+The commands use `$XDG_CONFIG_HOME` when it is set and `~/.config` otherwise.
+In the rest of this document, `~/.config` stands for that directory.
 
 To select Japanese documentation, add this to `~/.config/nvim/init.lua` (create the file if needed):
 
@@ -139,6 +148,9 @@ git clone https://github.com/prabirshrestha/vim-lsp \
 git clone https://github.com/zyosaidouki/systemd-lsp \
   ~/.vim/pack/lsp/start/systemd-lsp
 ```
+
+If your Vim (9.1.0327 or newer) reads `$XDG_CONFIG_HOME/vim/vimrc` instead of `~/.vimrc`,
+use `${XDG_CONFIG_HOME:-$HOME/.config}/vim` in place of `~/.vim`, and that `vimrc` in place of `~/.vimrc`.
 
 Add this to `~/.vimrc` (create the file if needed):
 
@@ -256,6 +268,23 @@ Vim/gVim (`~/.vimrc`):
 let g:systemd_lsp_catalog_path = '/path/to/catalog.json'
 ```
 
+### Configuration file
+
+The server also reads `$XDG_CONFIG_HOME/systemd-lsp/config.json`
+(`~/.config/systemd-lsp/config.json` when `XDG_CONFIG_HOME` is unset or not an absolute path).
+It supplies the settings the editor does not send, so it also works with LSP clients other than the bundled plugins:
+
+```json
+{
+  "locale": "ja",
+  "catalogPath": "/path/to/catalog.json"
+}
+```
+
+Both keys are optional. A relative `catalogPath` is resolved against the directory of `config.json`.
+`g:systemd_lsp_locale` and `g:systemd_lsp_catalog_path` (or the `locale` and `catalogPath`
+initialization options of another client) take precedence. Without either, documentation is in English.
+
 ## Features
 
 - Diagnostics for common systemd unit file mistakes
@@ -281,6 +310,9 @@ let g:systemd_lsp_catalog_path = '/path/to/catalog.json'
 - Value completion for common enum-like directives
 - Hover documentation for known directives
 - Document symbols for sections and directives
+- User units: files below `$XDG_CONFIG_HOME/systemd/user` (`~/.config/systemd/user` when
+  `XDG_CONFIG_HOME` is unset) get `WantedBy=default.target` in the template, and a warning for
+  `WantedBy=multi-user.target` or `graphical.target`, which the user manager does not have
 - Template insertion for empty standalone `.service` files; drop-ins and other
   unit types are never populated automatically
 
