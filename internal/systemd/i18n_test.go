@@ -74,3 +74,41 @@ func TestSectionDocumentationIncludesSyntaxAndExample(t *testing.T) {
 		}
 	}
 }
+
+func TestDocsDistinguishSettingsThatShareAName(t *testing.T) {
+	c := NewCatalog()
+	for _, tc := range []struct{ section, name, locale, want string }{
+		{"Service", "Type", LocaleJapanese, "サービスの起動方式を指定します。"},
+		{"Mount", "Type", LocaleJapanese, "マウントするファイルシステムの種類を指定します。"},
+		{"Mount", "Type", LocaleEnglish, "File system type."},
+		{"Swap", "Priority", LocaleJapanese, "swap の優先度を指定します。"},
+		{"Socket", "Priority", LocaleJapanese, "このソケットから送信するトラフィックの優先度（SO_PRIORITY）を指定します。"},
+		{"Socket", "Priority", LocaleEnglish, "Priority of the traffic sent from this socket (SO_PRIORITY)."},
+		{"Service", "ExecStartPre", LocaleJapanese, "ExecStart= の前に実行するコマンドを指定します。"},
+		{"Socket", "ExecStartPre", LocaleJapanese, "待ち受けソケットを作成してバインドする前に実行するコマンドを指定します。"},
+		{"Socket", "ExecStopPost", LocaleEnglish, "Command lines executed after the listening sockets are closed and removed."},
+		{"Service", "TimeoutStopSec", LocaleJapanese, "サービス停止に許可する最大時間を指定します。"},
+		{"Scope", "TimeoutStopSec", LocaleJapanese, "scope の停止に許可する最大時間を指定します。"},
+	} {
+		directive, ok := c.Directive(tc.section, tc.name)
+		if !ok {
+			t.Fatalf("[%s] %s is not in the catalog", tc.section, tc.name)
+		}
+		if doc := DirectiveDocFor(tc.section, directive, tc.locale); doc != tc.want {
+			t.Errorf("[%s] %s (%s) = %q, want %q", tc.section, tc.name, tc.locale, doc, tc.want)
+		}
+	}
+	for _, tc := range []struct{ section, name, want string }{
+		{"Service", "Type", "Type=simple"},
+		{"Mount", "Type", "Type=ext4"},
+		{"Swap", "Priority", "Priority=10"},
+		{"Socket", "Priority", "Priority=6"},
+		{"Mount", "Options", "Options=defaults,noatime"},
+		{"Swap", "Options", "Options=discard"},
+	} {
+		directive, _ := c.Directive(tc.section, tc.name)
+		if doc := DirectiveDocumentationFor(tc.section, directive, LocaleEnglish); !strings.Contains(doc, "\n"+tc.want+"\n") {
+			t.Errorf("[%s] %s example missing %q in %q", tc.section, tc.name, tc.want, doc)
+		}
+	}
+}

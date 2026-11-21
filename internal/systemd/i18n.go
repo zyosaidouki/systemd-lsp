@@ -48,6 +48,9 @@ func DirectiveDocFor(section string, directive Directive, locale string) string 
 	if directive.DocJapanese != "" {
 		return directive.DocJapanese
 	}
+	if doc, ok := japaneseSectionDirectiveDocs[section+"."+directive.Name]; ok {
+		return doc
+	}
 	if doc, ok := japaneseDirectiveDocs[directive.Name]; ok {
 		return doc
 	}
@@ -68,7 +71,7 @@ func DirectiveDocumentationFor(section string, directive Directive, locale strin
 		}
 	}
 	syntax := directiveSyntax(directive)
-	example := directiveExample(directive)
+	example := directiveExample(section, directive)
 	return markdownDoc(doc, directive.ManPage, syntax, example)
 }
 
@@ -109,9 +112,12 @@ func directiveSyntax(directive Directive) string {
 	return directive.Name + "=" + value
 }
 
-func directiveExample(directive Directive) string {
+func directiveExample(section string, directive Directive) string {
 	if directive.Example != "" {
 		return directive.Example
+	}
+	if example, ok := sectionDirectiveExamples[section+"."+directive.Name]; ok {
+		return example
 	}
 	if example, ok := directiveExamples[directive.Name]; ok {
 		return example
@@ -242,6 +248,7 @@ var directiveExamples = map[string]string{
 	"ExecStartPre":                  "ExecStartPre=/usr/bin/install -d /run/example",
 	"ExecStop":                      "ExecStop=/bin/kill -TERM $MAINPID",
 	"ExecStopPost":                  "ExecStopPost=/usr/bin/logger example stopped",
+	"ExecStopPre":                   "ExecStopPre=/usr/bin/logger example socket closing",
 	"ExitType":                      "ExitType=main",
 	"FileDescriptorName":            "FileDescriptorName=api",
 	"FileDescriptorStoreMax":        "FileDescriptorStoreMax=8",
@@ -291,7 +298,7 @@ var directiveExamples = map[string]string{
 	"ListenSequentialPacket":        "ListenSequentialPacket=/run/example.seqpacket",
 	"ListenSpecial":                 "ListenSpecial=/dev/rfkill",
 	"ListenStream":                  "ListenStream=127.0.0.1:8080",
-	"ListenUSBFunction":             "ListenUSBFunction=/dev/ffs/example/ep1",
+	"ListenUSBFunction":             "ListenUSBFunction=/dev/ffs/example",
 	"LogExtraFields":                "LogExtraFields=SERVICE=example",
 	"LogLevelMax":                   "LogLevelMax=info",
 	"LogsDirectory":                 "LogsDirectory=example",
@@ -431,6 +438,24 @@ var directiveExamples = map[string]string{
 	"Writable":                      "Writable=true",
 }
 
+// Settings that share their name with a setting of another section but mean
+// something else there. These take precedence over the tables keyed by name.
+var sectionDirectiveExamples = map[string]string{
+	"Mount.Type":      "Type=ext4",
+	"Socket.Priority": "Priority=6",
+	"Swap.Options":    "Options=discard",
+}
+
+var japaneseSectionDirectiveDocs = map[string]string{
+	"Mount.Type":           "マウントするファイルシステムの種類を指定します。",
+	"Scope.TimeoutStopSec": "scope の停止に許可する最大時間を指定します。",
+	"Socket.ExecStartPost": "待ち受けソケットを作成してバインドした後に実行するコマンドを指定します。",
+	"Socket.ExecStartPre":  "待ち受けソケットを作成してバインドする前に実行するコマンドを指定します。",
+	"Socket.ExecStopPost":  "待ち受けソケットを閉じて削除した後に実行するコマンドを指定します。",
+	"Socket.ExecStopPre":   "待ち受けソケットを閉じて削除する前に実行するコマンドを指定します。",
+	"Socket.Priority":      "このソケットから送信するトラフィックの優先度（SO_PRIORITY）を指定します。",
+}
+
 var japaneseDirectiveDocs = map[string]string{
 	"Accept":                        "接続ごとにサービスインスタンスを起動するかを指定します。",
 	"AccuracySec":                   "タイマー発火時刻の許容精度を指定します。",
@@ -502,7 +527,7 @@ var japaneseDirectiveDocs = map[string]string{
 	"Environment":                   "プロセスに渡す環境変数を指定します。",
 	"EnvironmentFile":               "環境変数を読み込むファイルを指定します。",
 	"ExecCondition":                 "起動前に評価する条件コマンドを指定します。",
-	"ExecPaths":                     "実行ファイルを置けるパスを制限します。",
+	"ExecPaths":                     "プログラムの実行を許可するパスを指定します（NoExecPaths= の例外）。",
 	"ExecReload":                    "サービスを reload するときに実行するコマンドを指定します。",
 	"ExecStart":                     "サービス起動時に実行するコマンドを指定します。",
 	"ExecStartPost":                 "ExecStart= の後に実行するコマンドを指定します。",
@@ -558,7 +583,7 @@ var japaneseDirectiveDocs = map[string]string{
 	"ListenSequentialPacket":        "待ち受ける sequential packet ソケットを指定します。",
 	"ListenSpecial":                 "待ち受ける特殊ファイルパスを指定します。",
 	"ListenStream":                  "待ち受ける stream ソケットのアドレスまたはパスを指定します。",
-	"ListenUSBFunction":             "待ち受ける USB FunctionFS endpoint パスを指定します。",
+	"ListenUSBFunction":             "待ち受ける USB FunctionFS のマウントポイントを指定します。",
 	"LogExtraFields":                "journal に追加するフィールドを指定します。",
 	"LogLevelMax":                   "出力する最大ログレベルを指定します。",
 	"LogsDirectory":                 "/var/log 配下に作成するログディレクトリを指定します。",
@@ -579,7 +604,7 @@ var japaneseDirectiveDocs = map[string]string{
 	"MessageQueueMaxMessages":       "POSIX message queue の最大メッセージ数を指定します。",
 	"MessageQueueMessageSize":       "POSIX message queue のメッセージサイズを指定します。",
 	"NoDelay":                       "TCP_NODELAY を有効にします。",
-	"NoExecPaths":                   "実行ファイルを置けないパスを指定します。",
+	"NoExecPaths":                   "プログラムの実行を禁止するパスを指定します。",
 	"NoNewPrivileges":               "新しい権限の獲得を禁止します。",
 	"NonBlocking":                   "渡されたソケットを non-blocking にします。",
 	"NotifyAccess":                  "サービス通知ソケットへのアクセス範囲を指定します。",
@@ -608,7 +633,7 @@ var japaneseDirectiveDocs = map[string]string{
 	"PathModified":                  "指定パスが変更または書き込みされたときに path ユニットを発火します。",
 	"PIDFile":                       "forking サービスの main PID を記録する PID ファイルを指定します。",
 	"Persistent":                    "停止中に逃した calendar timer を次回起動時に実行するかを指定します。",
-	"PrivateDevices":                "プライベートな /dev 名前空間を使用します。",
+	"PrivateDevices":                "物理デバイスを含まない専用の /dev を使用します（/dev/null などの疑似デバイスのみ）。",
 	"PrivateNetwork":                "プライベートなネットワーク名前空間を使用します。",
 	"PrivateTmp":                    "プライベートな /tmp と /var/tmp を使用します。",
 	"PrivateUsers":                  "プライベートなユーザー名前空間を使用します。",
@@ -641,7 +666,7 @@ var japaneseDirectiveDocs = map[string]string{
 	"RuntimeMaxSec":                 "サービスまたは scope の最大実行時間を指定します。",
 	"RuntimeRandomizedExtraSec":     "RuntimeMaxSec= に追加するランダム時間を指定します。",
 	"SecureBits":                    "プロセスの securebits フラグを指定します。",
-	"Service":                       "このソケットや path/timer によって起動するサービスユニットを指定します。",
+	"Service":                       "このソケットへの着信で起動するサービスユニットを指定します。",
 	"Slice":                         "このユニットを配置する slice ユニットを指定します。",
 	"SloppyOptions":                 "未知のマウントオプションを許容するかを指定します。",
 	"Sockets":                       "サービスへ渡す socket ユニットを指定します。",
@@ -658,8 +683,8 @@ var japaneseDirectiveDocs = map[string]string{
 	"StartLimitIntervalSec":         "起動レート制限の時間範囲を指定します。",
 	"StartupBlockIOWeight":          "非推奨の起動時ブロック I/O weight です。通常は StartupIOWeight= を使用します。",
 	"StartupCPUShares":              "非推奨の起動時 CPU share weight です。通常は StartupCPUWeight= を使用します。",
-	"StartupCPUWeight":              "起動時の CPU スケジューリング weight を指定します。",
-	"StartupIOWeight":               "起動時の I/O weight を指定します。",
+	"StartupCPUWeight":              "システムの起動中と停止中に適用する CPU スケジューリング weight を指定します。",
+	"StartupIOWeight":               "システムの起動中と停止中に適用する I/O weight を指定します。",
 	"StateDirectory":                "/var/lib 配下に作成する状態ディレクトリを指定します。",
 	"StopWhenUnneeded":              "必要とする active ユニットがなくなったときに停止するかを指定します。",
 	"SuccessExitStatus":             "成功とみなす追加の終了ステータスを指定します。",
